@@ -2003,7 +2003,7 @@ class AffineScalarFunc(object):
             (?:\.(?P<prec>\d+))?
             (?P<uncert_prec>u?)  # Precision for the uncertainty?
             # The type can be omitted. Options must not go here:
-            (?P<type>[eEfFgG%]??)  # n not supported
+            (?P<type>[eEfFgGrR%]??)  # n not supported
             (?P<options>[PSLp]*)  # uncertainties-specific flags
             $''',
             format_spec,
@@ -2075,7 +2075,7 @@ class AffineScalarFunc(object):
 
         # Reference value for the calculation of a possible exponent,
         # if needed:
-        if pres_type in (None, 'e', 'E', 'g', 'G'):
+        if pres_type in (None, 'e', 'E', 'g', 'G', 'r', 'R'):
             # Reference value for the exponent: the largest value
             # defines what the exponent will be (another convention
             # could have been chosen, like using the exponent of the
@@ -2162,7 +2162,7 @@ class AffineScalarFunc(object):
                 # We first calculate the number of significant digits
                 # to be displayed (if possible):
 
-                if pres_type in ('e', 'E'):
+                if pres_type in ('e', 'E', 'r', 'R'):
                     # The precision is the number of significant
                     # digits required - 1 (because there is a single
                     # digit before the decimal point, which is not
@@ -2211,7 +2211,7 @@ class AffineScalarFunc(object):
 
         if pres_type in ('f', 'F'):
             use_exp = False
-        elif pres_type in ('e', 'E'):
+        elif pres_type in ('e', 'E', 'r', 'R'):
             if not real_values:
                 use_exp = False
             else:
@@ -2221,6 +2221,10 @@ class AffineScalarFunc(object):
                 # signif_dgt_to_limit() was called before, which
                 # prompted a similar calculation:
                 common_exp = first_digit(round(exp_ref_value, -digits_limit))
+                if pres_type == 'R':
+                    common_exp = common_exp - common_exp % 3
+                elif pres_type == 'r':
+                    common_exp = common_exp + 1 - (common_exp + 1) % 3
 
         else:  # None, g, G
 
