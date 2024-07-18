@@ -10,11 +10,7 @@ from uncertainties.core_new import UFloat
 
 class UArray(np.ndarray):
     def __new__(cls, input_array) -> "UArray":
-        # Input array is an already formed ndarray instance
-        # We first cast to be our class type
         obj = np.asarray(input_array).view(cls)
-        # add the new attribute to the created instance
-        # Finally, we must return the newly created object:
         return obj
 
     @property
