@@ -35,3 +35,20 @@ class UArray(np.ndarray):
 
     def __str__(self):
         return f"{self.__class__.__name__}({super().__str__()})"
+
+    def mean(self, axis=None, dtype=None, out=None, keepdims=None, *, where=None):
+        """
+        Include to fix an issue where np.mean is returning a singleton 0d array rather
+        than scalar.
+        """
+        args = [axis, dtype, out]
+        if keepdims is not None:
+            args.append(keepdims)
+        kwargs = {}
+        if where is not None:
+            kwargs['where'] = where
+        result = super().mean(*args, **kwargs)
+
+        if result.ndim == 0:
+            return result.item()
+        return result
