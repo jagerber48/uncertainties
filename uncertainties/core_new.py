@@ -359,6 +359,8 @@ class ToUFunc:
                     new_uncertainty_lin_combo.append(
                         (arg.uncertainty_lin_combo, derivative)
                     )
+                elif not isinstance(arg, Real):
+                    return NotImplemented
 
             new_uncertainty_lin_combo = tuple(new_uncertainty_lin_combo)
             return UFloat(new_val, new_uncertainty_lin_combo)
