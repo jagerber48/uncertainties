@@ -135,6 +135,10 @@ class UFloat:
     def std_dev(self: "UFloat") -> float:
         return get_std_dev(self.uncertainty_lin_combo)
 
+    @property
+    def uncertainty(self: "UFloat") -> UncertaintyCombo:
+        return self.uncertainty_lin_combo
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.val}, {self.std_dev})'
 
@@ -148,6 +152,10 @@ class UFloat:
 
     @property
     def n(self: "UFloat") -> float:
+        return self.val
+
+    @property
+    def value(self: "UFloat") -> float:
         return self.val
 
     @property
