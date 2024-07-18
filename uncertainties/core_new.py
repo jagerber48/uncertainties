@@ -6,7 +6,9 @@ from functools import lru_cache, wraps
 from math import sqrt, isnan
 from numbers import Real
 import sys
-from typing import Any, Callable, Collection, Dict, Optional, Tuple, Union, TYPE_CHECKING
+from typing import (
+    Any, Callable, Collection, Dict, Optional, Tuple, Union, TYPE_CHECKING,
+)
 import uuid
 
 if TYPE_CHECKING:
