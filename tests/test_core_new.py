@@ -162,7 +162,8 @@ def test_negative_std():
         _ = UFloat(-1.0, -1.0)
 
 
-func_derivs = ((k, v) for k, v in umath_new.deriv_dict.items())
+
+func_derivs = ((k, v) for k, v in umath.math_funcs_dict.items())
 
 
 @pytest.mark.parametrize("ufunc_name, ufunc_derivs", func_derivs)
@@ -170,11 +171,11 @@ def test_ufunc_analytic_numerical_partial(ufunc_name, ufunc_derivs):
     if ufunc_name == "acosh":
         # cosh returns values > 1
         args = (UFloat(1.1, 0.1),)
-    elif ufunc_name == "atan2":
+    elif ufunc_name in ["atan2", "hypot"]:
         # atan2 requires two arguments
         args = (UFloat(1.1, 0.1), UFloat(3.1, 0.2))
     else:
         args = (UFloat(0.1, 0.01),)
-    ufunc = getattr(umath_new, ufunc_name)
+    ufunc = getattr(umath, ufunc_name)
     nfunc = ToUFunc(range(len(ufunc_derivs)))(getattr(math, ufunc_name))
     assert ufloats_close(ufunc(*args), nfunc(*args), tolerance=1e-6)
