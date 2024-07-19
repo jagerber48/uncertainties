@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import numpy as np
 
 from uncertainties.new.ufloat import UFloat
 
 
 class UArray(np.ndarray):
-    def __new__(cls, input_array) -> "UArray":
+    def __new__(cls, input_array) -> UArray:
         obj = np.asarray(input_array).view(cls)
         return obj
 
@@ -21,10 +23,10 @@ class UArray(np.ndarray):
         return np.array(np.vectorize(lambda uval: uval.uncertainty)(self), dtype=object)
 
     @classmethod
-    def from_val_arr_std_dev_arr(cls, val_arr, std_dev_arr):
+    def from_val_arr_std_dev_arr(cls, val_arr, std_dev_arr) -> UArray:
         return cls(np.vectorize(UFloat)(val_arr, std_dev_arr))
 
-    def __str__(self):
+    def __str__(self: UArray) -> str:
         return f"{self.__class__.__name__}({super().__str__()})"
 
     def mean(self, axis=None, dtype=None, out=None, keepdims=None, *, where=None):
