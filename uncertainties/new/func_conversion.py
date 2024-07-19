@@ -4,7 +4,7 @@ from numbers import Real
 import sys
 from typing import Any, Callable, Collection, Dict, Optional, Tuple, Union
 
-from uncertainties.new.ufloat import UFloat
+from uncertainties.new.ufloat import UFloat, UCombo
 
 SQRT_EPS = sqrt(sys.float_info.epsilon)
 
@@ -132,7 +132,7 @@ class ToUFunc:
             if not return_u_val:
                 return new_val
 
-            new_uncertainty_lin_combo = []
+            new_combo_list = []
             for u_float_param in self.ufloat_params:
                 if isinstance(u_float_param, int):
                     try:
@@ -156,14 +156,14 @@ class ToUFunc:
                     else:
                         derivative = deriv_func(*float_args, **float_kwargs)
 
-                    new_uncertainty_lin_combo.append(
-                        (arg.uncertainty_lin_combo, derivative)
+                    new_combo_list.append(
+                        (arg.uncertainty, derivative)
                     )
                 elif not isinstance(arg, Real):
                     return NotImplemented
 
-            new_uncertainty_lin_combo = tuple(new_uncertainty_lin_combo)
-            return UFloat(new_val, new_uncertainty_lin_combo)
+            new_uncertainty_combo = UCombo(tuple(new_combo_list))
+            return UFloat(new_val, new_uncertainty_combo)
 
         return wrapped
 

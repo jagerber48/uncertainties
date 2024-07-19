@@ -9,18 +9,18 @@ from uncertainties.new.func_conversion import ToUFunc, ToUFuncPositional
 from tests.helpers import ufloats_close
 
 
-repr_cases = cases = [
-        (UFloat(10, 1), 'UFloat(10.0, 1.0)'),
-        (UFloat(20, 2), 'UFloat(20.0, 2.0)'),
-        (UFloat(30, 3), 'UFloat(30.0, 3.0)'),
-        (UFloat(-30, 3), 'UFloat(-30.0, 3.0)'),
-        (UFloat(-30, float('nan')), 'UFloat(-30.0, nan)'),
+str_cases = cases = [
+        (UFloat(10, 1), '10.0 ± 1.0'),
+        (UFloat(20, 2), '20.0 ± 2.0'),
+        (UFloat(30, 3), '30.0 ± 3.0'),
+        (UFloat(-30, 3), '-30.0 ± 3.0'),
+        (UFloat(-30, float('nan')), '-30.0 ± nan'),
     ]
 
 
-@pytest.mark.parametrize("unum, expected_repr_str", repr_cases)
-def test_repr(unum: UFloat, expected_repr_str: str):
-    assert repr(unum) == expected_repr_str
+@pytest.mark.parametrize("unum, expected_str", str_cases)
+def test_str(unum: UFloat, expected_str: str):
+    assert str(unum) == expected_str
 
 
 x = UFloat(10, 1)

@@ -5,18 +5,28 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from math import sqrt, isnan
 from numbers import Real
-from typing import Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 import uuid
 
 
 @dataclass(frozen=True)
-class UncertaintyAtom:
+class UAtom:
     """
     Custom class to keep track of "atoms" of uncertainty. Two UncertaintyAtoms are
     always uncorrelated.
     """
     std_dev: float
     uuid: uuid.UUID = field(default_factory=uuid.uuid4, init=False)
+
+    def __post_init__(self):
+        if self.std_dev < 0:
+            raise ValueError(f'Uncertainty must be non-negative, not {self.std_dev}.')
+
+    def __str__(self):
+        """
+        __str__ drops the uuid
+        """
+        return f'{self.__class__.__name__}({self.std_dev})'
 
 
 """
@@ -37,58 +47,81 @@ calculations until a standard deviation or correlation must be calculated at the
 an error propagation calculation.
 """
 # TODO: How much does this optimization quantitatively improve performance?
-UncertaintyCombo = Tuple[
-    Tuple[
-        Union[UncertaintyAtom, "UncertaintyCombo"],
-        float
-    ],
-    ...
-]
-ExpandedUncertaintyCombo = Tuple[
-    Tuple[
-        UncertaintyAtom,
-        float
-    ],
-    ...
-]
 
 
 @lru_cache(maxsize=None)
-def get_expanded_combo(combo: UncertaintyCombo) -> ExpandedUncertaintyCombo:
+def get_expanded_combo(
+        combo: UCombo,
+) -> ExpandedUCombo:
     """
     Recursively expand a nested UncertaintyCombo into an ExpandedUncertaintyCombo whose
     terms all represent weighted UncertaintyAtoms.
     """
-    expanded_dict = defaultdict(float)
-    for combo, combo_weight in combo:
-        if isinstance(combo, UncertaintyAtom):
-            expanded_dict[combo] += combo_weight
+    expanded_dict: Dict[UAtom, float] = defaultdict(float)
+    for term, term_weight in combo:
+        if isinstance(term, UAtom):
+            expanded_dict[term] += term_weight
         else:
-            expanded_combo = get_expanded_combo(combo)
-            for atom, atom_weight in expanded_combo:
-                expanded_dict[atom] += atom_weight * combo_weight
+            expanded_term = get_expanded_combo(term)
+            for atom, atom_weight in expanded_term:
+                expanded_dict[atom] += atom_weight * term_weight
 
-    pruned_expanded_dict = {}
+    combo_list: List[Tuple[UAtom, float]] = []
     for atom, weight in expanded_dict.items():
         if atom.std_dev == 0 or (weight == 0 and not isnan(atom.std_dev)):
             continue
-        pruned_expanded_dict[atom] = weight
+        combo_list.append((atom, weight))
+    combo_tuple: Tuple[Tuple[UAtom, float], ...] = tuple(combo_list)
 
-    return tuple((atom, weight) for atom, weight in pruned_expanded_dict.items())
+    return ExpandedUCombo(combo_tuple)
 
 
 @lru_cache(maxsize=None)
-def get_std_dev(combo: UncertaintyCombo) -> float:
+def get_std_dev(combo: ExpandedUCombo) -> float:
     """
     Get the standard deviation corresponding to an UncertaintyCombo. The UncertainyCombo
     is expanded and the weighted UncertaintyAtoms are added in quadrature.
     """
-    expanded_combo = get_expanded_combo(combo)
     list_of_squares = [
-        (weight*atom.std_dev)**2 for atom, weight in expanded_combo
+        (weight*atom.std_dev)**2 for atom, weight in combo
     ]
     std_dev = sqrt(sum(list_of_squares))
     return std_dev
+
+
+@dataclass(frozen=True)
+class UCombo:
+    combo: Tuple[Tuple[Union[UAtom, "UCombo"], float], ...]
+
+    def __iter__(self):
+        return iter(self.combo)
+
+    def expanded(self: "UCombo") -> "ExpandedUCombo":
+        return get_expanded_combo(self)
+
+    @property
+    def std_dev(self: "UCombo") -> float:
+        return get_std_dev(self.expanded())
+
+    def __str__(self):
+        ret_str = ""
+        first = True
+        for term, weight in self.combo:
+            if not first:
+                ret_str += " + "
+            else:
+                first = False
+
+            if isinstance(term, UAtom):
+                ret_str += f"{weight}×{term}"
+            else:
+                ret_str += f"{weight}×({term})"
+        return ret_str
+
+
+@dataclass(frozen=True)
+class ExpandedUCombo(UCombo):
+    combo: Tuple[Tuple[UAtom, float], ...]
 
 
 class UFloat:
@@ -101,55 +134,56 @@ class UFloat:
     operations. The uncertainty is propagtaed using the rules of linear uncertainty
     propagation.
     """
-    def __init__(
-            self,
-            /,
-            value: Real,
-            uncertainty: Union[UncertaintyCombo, Real] = (),
-            tag: Optional[str] = None
-    ):
-        self._val = float(value)
+    def __init__(self, value: Real, uncertainty: Union[UCombo, Real]):
+        """
+        Using properties for value and uncertainty makes them essentially immutable.
+        """
+        self._value: float = float(value)
+
         if isinstance(uncertainty, Real):
-            if uncertainty < 0:
-                raise ValueError(
-                    f'Uncertainty must be non-negative, not {uncertainty}.'
-                )
-            atom = UncertaintyAtom(float(uncertainty))
-            uncertainty_combo = ((atom, 1.0),)
-            self.uncertainty_lin_combo = uncertainty_combo
+            atom = UAtom(float(uncertainty))
+            combo = UCombo(((atom, 1.0),))
+            self._uncertainty: UCombo = combo
         else:
-            self.uncertainty_lin_combo = uncertainty
-        self.tag = tag
+            self._uncertainty: UCombo = uncertainty
 
     @property
-    def val(self: "UFloat") -> float:
-        return self._val
+    def value(self: "UFloat") -> float:
+        return self._value
+
+    @property
+    def uncertainty(self: "UFloat") -> UCombo:
+        return self._uncertainty
 
     @property
     def std_dev(self: "UFloat") -> float:
-        return get_std_dev(self.uncertainty_lin_combo)
+        return self.uncertainty.std_dev
 
-    @property
-    def uncertainty(self: "UFloat") -> UncertaintyCombo:
-        return self.uncertainty_lin_combo
+    def __str__(self) -> str:
+        return f'{self.val} ± {self.std_dev}'
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({self.val}, {self.std_dev})'
+        """
+        Very verbose __repr__ including the entire uncertainty linear combination repr.
+        """
+        return (
+            f'{self.__class__.__name__}({repr(self.value)}, {repr(self.uncertainty)})'
+        )
 
     def __bool__(self):
         return self != UFloat(0, 0)
 
     # Aliases
     @property
+    def val(self: "UFloat") -> float:
+        return self.value
+
+    @property
     def nominal_value(self: "UFloat") -> float:
         return self.val
 
     @property
     def n(self: "UFloat") -> float:
-        return self.val
-
-    @property
-    def value(self: "UFloat") -> float:
         return self.val
 
     @property
@@ -161,10 +195,13 @@ class UFloat:
             return False
         val_eq = self.val == other.val
 
-        self_expanded_linear_combo = get_expanded_combo(self.uncertainty_lin_combo)
-        other_expanded_linear_combo = get_expanded_combo(other.uncertainty_lin_combo)
+        self_expanded_linear_combo = self.uncertainty.expanded()
+        other_expanded_linear_combo = other.uncertainty.expanded()
         uncertainty_eq = self_expanded_linear_combo == other_expanded_linear_combo
         return val_eq and uncertainty_eq
+
+    def __hash__(self):
+        return hash((hash(self.val), hash(self.uncertainty)))
 
     def __pos__(self: "UFloat") -> "UFloat": ...
 
@@ -199,5 +236,5 @@ class UFloat:
     def __rmod__(self: "UFloat", other: Union["UFloat", Real]) -> "UFloat": ...
 
 
-def ufloat(val: Real, unc: Real, tag=None) -> UFloat:
-    return UFloat(val, unc, tag)
+def ufloat(val: Real, unc: Real) -> UFloat:
+    return UFloat(val, unc)
