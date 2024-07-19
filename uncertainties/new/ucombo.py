@@ -28,26 +28,6 @@ class UAtom:
         return f'{self.__class__.__name__}({self.std_dev})'
 
 
-"""
-UncertaintyCombo represents a (possibly nested) linear superposition of 
-UncertaintyAtoms. The UncertaintyCombo is an n-tuple of terms in the linear 
-superposition and each term is represented by a 2-tuple. The second element of the
-2-tuple is the weight of that term. The first element is either an UncertaintyAtom or
-another UncertaintyCombo. In the latter case the original UncertaintyCombo is nested.
-
-By passing the weights through the linear combinations and collecting like terms, any 
-UncertaintyCombo can be expanded into a form where each term is an UncertaintyAtom. This
-would be an ExpandedUncertaintyCombo.
-
-Nested UncertaintyCombos are supported as a performance optimization. There is a
-cost to expanding linear combinations during uncertainty propagation calculations. 
-Supporting nested UncertaintyCombos allows expansion to be deferred through intermediate
-calculations until a standard deviation or correlation must be calculated at the end of
-an error propagation calculation.
-"""
-# TODO: How much does this optimization quantitatively improve performance?
-
-
 @lru_cache(maxsize=None)
 def get_expanded_combo(
         combo: UCombo,
@@ -86,6 +66,25 @@ def get_std_dev(combo: ExpandedUCombo) -> float:
     ]
     std_dev = sqrt(sum(list_of_squares))
     return std_dev
+
+
+"""
+UCombos represents a (possibly nested) linear superposition of UAtoms. The UCombo is a
+sequence of terms in a linear combination. Each term is represented by a 2-tuple. The 
+second element of the 2-tuple is the weight of that term. The first element is either a
+UAtom or another UCombo. In the latter case the original UCombo is nested.
+
+By passing the weights through the linear combinations and collecting like terms, any 
+UCombo can be expanded into a form where each term is an UAtom. This would be an 
+ExpandedUCombo.
+
+Nested UCombo are supported as a performance optimization. There is a cost to expanding 
+linear combinations during uncertainty propagation calculations. Supporting nested 
+UCombo allows expansion to be deferred through intermediate calculations until a 
+standard deviation or correlation must be calculated at the end of an error propagation 
+calculation.
+"""
+# TODO: How much does this optimization quantitatively improve performance?
 
 
 @dataclass(frozen=True)
