@@ -1,11 +1,6 @@
 import numpy as np
 
-# TODO: We need this import to execute the code that actually adds the ufuncs to UFloat.
-#   This can and should be refactored to be cleaner. I recommend adding the ufuncs to
-#   UFloat in uncertainties/__init__.py. That way UFloat will always have these methods
-#   defined whether or not numpy is present
-from uncertainties import umath_new
-from uncertainties.core_new import UFloat
+from uncertainties.new.ufloat import UFloat
 
 
 class UArray(np.ndarray):

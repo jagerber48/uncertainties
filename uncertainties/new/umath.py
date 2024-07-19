@@ -3,7 +3,44 @@ from numbers import Real
 import sys
 from typing import Union
 
-from uncertainties.core_new import UFloat, ToUFuncPositional
+from uncertainties.new.ufloat import UFloat, ToUFuncPositional
+
+
+float_funcs_dict = {
+        '__abs__': ('abs(x)/x',),
+        '__pos__': ('1',),
+        '__neg__': ('-1',),
+        '__trunc__': ('0',),
+        '__add__': ('1', '1'),
+        '__radd__': ('1', '1'),
+        '__sub__': ('1', '-1'),
+        '__rsub__': ('-1', '1'),  # Reversed order __rsub__(x, y) = y - x
+        '__mul__': ('y', 'x'),
+        '__rmul__': ('y', 'x'),
+        '__truediv__': ('1/y', '-x/y**2'),
+        '__rtruediv__': ('-x/y**2', '1/y'),  # reversed order __rtruediv__(x, y) = y/x
+        '__floordiv__': ('0', '0'),
+        '__rfloordiv__': ('0', '0'),
+        '__pow__': (None, None),  # TODO: add these, see `uncertainties` source
+        '__rpow__': (None, None),
+        '__mod__': (None, None),
+        '__rmod__': (None, None),
+    }
+
+
+def add_float_funcs_to_ufloat():
+    """
+    Monkey-patch common float operations from the float class over to the UFloat class
+    using the ToUFuncPositional decorator.
+    """
+    # TODO: There is some additional complexity added by allowing analytic derivative
+    #   functions instead of taking numerical derivatives for all functions. It would
+    #   be interesting to benchmark the different approaches and see if the additional
+    #   complexity is worth the performance.
+    for func_name, deriv_funcs in float_funcs_dict.items():
+        float_func = getattr(float, func_name)
+        ufloat_ufunc = ToUFuncPositional(deriv_funcs)(float_func)
+        setattr(UFloat, func_name, ufloat_ufunc)
 
 
 UReal = Union[Real, UFloat]
@@ -87,7 +124,7 @@ def log_der0(*args):
         return 1 / args[0] / math.log(args[1])  # 2-argument form
 
 
-deriv_dict = {
+math_funcs_dict = {
     # In alphabetical order, here:
     "acos": ("-1/math.sqrt(1-x**2)",),
     "acosh": ("1/math.sqrt(x**2-1)",),
@@ -115,10 +152,12 @@ deriv_dict = {
 
 this_module = sys.modules[__name__]
 
-for func_name, deriv_funcs in deriv_dict.items():
-    func = getattr(math, func_name)
-    ufunc = ToUFuncPositional(deriv_funcs, eval_locals={"math": math})(func)
-    setattr(this_module, func_name, ufunc)
+
+def add_math_funcs_to_umath():
+    for func_name, deriv_funcs in math_funcs_dict.items():
+        func = getattr(math, func_name)
+        ufunc = ToUFuncPositional(deriv_funcs, eval_locals={"math": math})(func)
+        setattr(this_module, func_name, ufunc)
 
 
 ufuncs_umath_dict = {
@@ -134,7 +173,7 @@ ufuncs_umath_dict = {
     'arcsin': lambda x: asin(x),
     'arccos': lambda x: acos(x),
     'arctan': lambda x: atan(x),
-    'arctan2': lambda y, x: atan2(y,x),
+    'arctan2': lambda y, x: atan2(y, x),
     'hypot': lambda x, y: hypot(x, y),
     'sinh': lambda self: sinh(self),
     'cosh': lambda self: cosh(self),
@@ -148,5 +187,7 @@ ufuncs_umath_dict = {
     'rad2deg': lambda self: degrees(self),
 }
 
-for func_name, func in ufuncs_umath_dict.items():
-    setattr(UFloat, func_name, func)
+
+def add_ufuncs_to_ufloat():
+    for func_name, func in ufuncs_umath_dict.items():
+        setattr(UFloat, func_name, func)

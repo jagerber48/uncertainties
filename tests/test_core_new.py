@@ -2,8 +2,8 @@ import math
 
 import pytest
 
-from uncertainties import umath_new
-from uncertainties.core_new import UFloat, ToUFunc, ToUFuncPositional
+from uncertainties.new import umath
+from uncertainties.new.ufloat import UFloat, ToUFunc, ToUFuncPositional
 
 from helpers import ufloats_close
 

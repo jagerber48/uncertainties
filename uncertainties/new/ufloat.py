@@ -435,44 +435,5 @@ class ToUFuncPositional(ToUFunc):
         super().__init__(ufloat_params, deriv_func_dict)
 
 
-def add_float_funcs_to_uvalue():
-    """
-    Monkey-patch common float operations from the float class over to the UFloat class
-    using the ToUFuncPositional decorator.
-    """
-    # TODO: There is some additional complexity added by allowing analytic derivative
-    #   functions instead of taking numerical derivatives for all functions. It would
-    #   be interesting to benchmark the different approaches and see if the additional
-    #   complexity is worth the performance.
-    float_funcs_dict = {
-        '__abs__': ('abs(x)/x',),
-        '__pos__': ('1',),
-        '__neg__': ('-1',),
-        '__trunc__': ('0',),
-        '__add__': ('1', '1'),
-        '__radd__': ('1', '1'),
-        '__sub__': ('1', '-1'),
-        '__rsub__': ('-1', '1'),  # Reversed order __rsub__(x, y) = y - x
-        '__mul__': ('y', 'x'),
-        '__rmul__': ('y', 'x'),
-        '__truediv__': ('1/y', '-x/y**2'),
-        '__rtruediv__': ('-x/y**2', '1/y'),  # reversed order __rtruediv__(x, y) = y/x
-        '__floordiv__': ('0', '0'),
-        '__rfloordiv__': ('0', '0'),
-        '__pow__': (None, None),  # TODO: add these, see `uncertainties` source
-        '__rpow__': (None, None),
-        '__mod__': (None, None),
-        '__rmod__': (None, None),
-    }
-
-    for func_name, deriv_funcs in float_funcs_dict.items():
-        float_func = getattr(float, func_name)
-        ufloat_ufunc = ToUFuncPositional(deriv_funcs)(float_func)
-        setattr(UFloat, func_name, ufloat_ufunc)
-
-
-add_float_funcs_to_uvalue()
-
-
-def ufloat(val, unc, tag=None):
+def ufloat(val: Real, unc: Real, tag=None) -> UFloat:
     return UFloat(val, unc, tag)

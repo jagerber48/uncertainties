@@ -1,7 +1,7 @@
 import numpy as np
 
-from uncertainties.core_new import UFloat
-from uncertainties.unumpy.uarray import UArray
+from uncertainties.new.ufloat import UFloat
+from uncertainties.new.uarray import UArray
 
 UFloat.__repr__ = lambda self: f'{self.n:.3f} +/- {self.s:.3f}'
 
