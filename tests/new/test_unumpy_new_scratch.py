@@ -9,6 +9,7 @@ x = UFloat(1, 0.1)
 y = UFloat(2, 0.2)
 z = UFloat(3, 0.3)
 
+print('')
 print("## Numpy operations (ufuncs) work on scalars (UFloat) ##")
 print(f'{x=}')
 print(f'{np.sin(x)=}')
