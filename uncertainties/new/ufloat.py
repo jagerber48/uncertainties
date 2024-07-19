@@ -11,6 +11,7 @@ from typing import (
 )
 import uuid
 
+
 if TYPE_CHECKING:
     from inspect import Signature
 
@@ -216,6 +217,24 @@ def get_param_name(sig: Signature, param: Union[int, str]):
     return param_name
 
 
+def inject_to_args_kwargs(param, injected_arg, *args, **kwargs):
+    if isinstance(param, int):
+        new_kwargs = kwargs
+        new_args = []
+        for idx, arg in enumerate(args):
+            if idx == param:
+                new_args.append(injected_arg)
+            else:
+                new_args.append(arg)
+    elif isinstance(param, str):
+        new_args = args
+        new_kwargs = kwargs
+        new_kwargs[param] = injected_arg
+    else:
+        raise TypeError(f'{param} must be an int or str, not {type(param)}.')
+    return new_args, new_kwargs
+
+
 def numerical_partial_derivative(
         f: Callable[..., float],
         target_param: Union[str, int],
@@ -233,29 +252,18 @@ def numerical_partial_derivative(
         x = kwargs[target_param]
     dx = abs(x) * SQRT_EPS  # Numerical Recipes 3rd Edition, eq. 5.7.5
 
-    # TODO: The construction below could be simplied using inspect.signature. However,
-    #   the math.log, and other math functions do not yet (as of python 3.12) work with
-    #   inspect.signature. Therefore, we need to manually loop of args and kwargs.
-    #   Monitor https://github.com/python/cpython/pull/117671
-    lower_args = []
-    upper_args = []
-    for idx, arg in enumerate(args):
-        if idx == target_param:
-            lower_args.append(x - dx)
-            upper_args.append(x + dx)
-        else:
-            lower_args.append(arg)
-            upper_args.append(arg)
-
-    lower_kwargs = {}
-    upper_kwargs = {}
-    for key, arg in kwargs.items():
-        if key == target_param:
-            lower_kwargs[key] = x - dx
-            upper_kwargs[key] = x + dx
-        else:
-            lower_kwargs[key] = arg
-            upper_kwargs[key] = arg
+    lower_args, lower_kwargs = inject_to_args_kwargs(
+        target_param,
+        x-dx,
+        *args,
+        **kwargs,
+    )
+    upper_args, upper_kwargs = inject_to_args_kwargs(
+        target_param,
+        x+dx,
+        *args,
+        **kwargs,
+    )
 
     lower_y = f(*lower_args, **lower_kwargs)
     upper_y = f(*upper_args, **upper_kwargs)
@@ -313,9 +321,9 @@ class ToUFunc:
             #   Monitor https://github.com/python/cpython/pull/117671
             return_u_val = False
             float_args = []
-            for arg in args:
+            for idx, arg in args:
                 if isinstance(arg, UFloat):
-                    float_args.append(arg.val)
+                    float_args, float_kwargs = inject_to_args_kwargs()
                     return_u_val = True
                 else:
                     float_args.append(arg)
