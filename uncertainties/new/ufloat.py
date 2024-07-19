@@ -16,6 +16,9 @@ class UFloat:
     operations. The uncertainty is propagtaed using the rules of linear uncertainty
     propagation.
     """
+
+    __slots__ = ["_value", "_uncertainty"]
+
     def __init__(self, value: Real, uncertainty: Union[UCombo, Real]):
         """
         Using properties for value and uncertainty makes them essentially immutable.
