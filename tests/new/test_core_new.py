@@ -3,7 +3,8 @@ import math
 import pytest
 
 from uncertainties.new import umath
-from uncertainties.new.ufloat import UFloat, ToUFunc, ToUFuncPositional
+from uncertainties.new.ufloat import UFloat
+from uncertainties.new.func_conversion import ToUFunc, ToUFuncPositional
 
 from tests.helpers import ufloats_close
 

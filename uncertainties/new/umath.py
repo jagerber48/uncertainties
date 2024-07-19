@@ -3,7 +3,8 @@ from numbers import Real
 import sys
 from typing import Union
 
-from uncertainties.new.ufloat import UFloat, ToUFuncPositional
+from uncertainties.new.ufloat import UFloat
+from uncertainties.new.func_conversion import ToUFuncPositional
 
 
 float_funcs_dict = {
