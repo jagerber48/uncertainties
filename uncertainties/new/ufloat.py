@@ -57,12 +57,13 @@ class UFloat(NumericBase):
         # return f'{self.val} ± {self.std_dev}'
 
     def __repr__(self: Self) -> str:
-        """
-        Very verbose __repr__ including the entire uncertainty linear combination repr.
-        """
-        return (
-            f'{self.__class__.__name__}({repr(self.value)}, {repr(self.uncertainty)})'
-        )
+        return str(self)
+        # """
+        # Very verbose __repr__ including the entire uncertainty linear combination repr.
+        # """
+        # return (
+        #     f'{self.__class__.__name__}({repr(self.value)}, {repr(self.uncertainty)})'
+        # )
 
     def __bool__(self: Self) -> bool:
         return self != UFloat(0, 0)
