@@ -157,7 +157,7 @@ class ToUFunc:
                         derivative = deriv_func(*float_args, **float_kwargs)
 
                     new_combo_list.append(
-                        (arg.uncertainty, derivative)
+                        (arg.uncertainty, float(derivative))
                     )
                 elif not isinstance(arg, Real):
                     return NotImplemented

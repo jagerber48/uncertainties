@@ -49,7 +49,7 @@ def get_expanded_combo(
     for atom, weight in expanded_dict.items():
         if atom.std_dev == 0 or (weight == 0 and not isnan(atom.std_dev)):
             continue
-        combo_list.append((atom, weight))
+        combo_list.append((atom, float(weight)))
     combo_tuple: Tuple[Tuple[UAtom, float], ...] = tuple(combo_list)
 
     return ExpandedUCombo(combo_tuple)
