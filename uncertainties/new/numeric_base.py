@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from numbers import Real
 
 
-Self = TypeVar("Self", bound="Foo")
+Self = TypeVar("Self", bound="NumericBase")
 
 
 class NumericBase:
