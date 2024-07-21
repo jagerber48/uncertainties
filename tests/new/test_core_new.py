@@ -10,11 +10,11 @@ from tests.helpers import ufloats_close
 
 
 str_cases = cases = [
-        (UFloat(10, 1), '10.0 ± 1.0'),
-        (UFloat(20, 2), '20.0 ± 2.0'),
-        (UFloat(30, 3), '30.0 ± 3.0'),
-        (UFloat(-30, 3), '-30.0 ± 3.0'),
-        (UFloat(-30, float('nan')), '-30.0 ± nan'),
+        (UFloat(10, 1), '10.0+/-1.0'),
+        (UFloat(20, 2), '20.0+/-2.0'),
+        (UFloat(30, 3), '30.0+/-3.0'),
+        (UFloat(-30, 3), '-30.0+/-3.0'),
+        (UFloat(-30, float('nan')), '-30.0+/-nan'),
     ]
 
 
@@ -177,5 +177,5 @@ def test_ufunc_analytic_numerical_partial(ufunc_name, ufunc_derivs):
     else:
         args = (UFloat(0.1, 0.01),)
     ufunc = getattr(umath, ufunc_name)
-    nfunc = ToUFunc(range(len(ufunc_derivs)))(getattr(math, ufunc_name))
+    nfunc = ToUFunc()(getattr(math, ufunc_name))
     assert ufloats_close(ufunc(*args), nfunc(*args), tolerance=1e-6)

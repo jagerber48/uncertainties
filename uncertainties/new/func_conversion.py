@@ -1,12 +1,32 @@
 from functools import wraps
 from math import sqrt
-from numbers import Real
 import sys
-from typing import Any, Callable, Collection, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from uncertainties.new.ufloat import UFloat, UCombo
 
 SQRT_EPS = sqrt(sys.float_info.epsilon)
+
+
+def get_args_kwargs_list(*args, **kwargs):
+    args_kwargs_list = []
+    for idx, arg in enumerate(args):
+        args_kwargs_list.append((idx, arg))
+    for key, arg in kwargs.items():
+        args_kwargs_list.append((key, arg))
+    return args_kwargs_list
+
+
+def args_kwargs_list_to_args_kwargs(args_kwargs_list):
+    args = []
+    kwargs = {}
+    for label, arg in args_kwargs_list:
+        if isinstance(label, int):
+            args.append(arg)
+        else:
+            kwargs[label] = arg
+    args = tuple(args)
+    return args, kwargs
 
 
 def inject_to_args_kwargs(param, injected_arg, *args, **kwargs):
@@ -78,27 +98,20 @@ class ToUFunc:
     input UFloats weighted by the partial derivatives of the original function with
     respect to the corresponding input parameters.
 
-    :param ufloat_params: Collection of strings or integers indicating the name or
-      position index of the parameters which will be made to accept UFloat.
-    :param deriv_func_dict: Dictionary mapping parameters specified in ufloat_params to
+    :param deriv_func_dict: Dictionary mapping positional or keyword parameters to
       functions that return the partial derivatives of the decorated function with
-      respect to the corresponding parameter. The partial derivative functions should
-      have the same signature as the decorated function. If any ufloat param is absent
-      or is mapped to ``None`` then the partial derivatives will be evaluated
-      numerically.
+      respect to the corresponding parameter. This function will be called if a UFloat
+      is passed as an argument to the corresponding parameter. If a UFloat is passed
+      into a parameter which is not specified in deriv_func_dict then the partial
+      derivative will be evaluated numerically.
     """
     def __init__(
             self,
-            ufloat_params: Collection[ParamSpecifier],
             deriv_func_dict: DerivFuncDict = None,
     ):
-        self.ufloat_params = ufloat_params
 
         if deriv_func_dict is None:
             deriv_func_dict = {}
-        for ufloat_param in ufloat_params:
-            if ufloat_param not in deriv_func_dict:
-                deriv_func_dict[ufloat_param] = None
         self.deriv_func_dict: DerivFuncDict = deriv_func_dict
 
     def __call__(self, f: Callable[..., float]):
@@ -132,35 +145,46 @@ class ToUFunc:
             if not return_u_val:
                 return new_val
 
+            args_kwargs_list = get_args_kwargs_list(*args, **kwargs)
+
             new_combo_list = []
-            for u_float_param in self.ufloat_params:
-                if isinstance(u_float_param, int):
-                    try:
-                        arg = args[u_float_param]
-                    except IndexError:
-                        continue
-                else:
-                    try:
-                        arg = kwargs[u_float_param]
-                    except KeyError:
-                        continue
+            for label, arg in args_kwargs_list:
                 if isinstance(arg, UFloat):
-                    deriv_func = self.deriv_func_dict[u_float_param]
-                    if deriv_func is None:
+                    if label in self.deriv_func_dict:
+                        deriv_func = self.deriv_func_dict[label]
+                        derivative = deriv_func(*float_args, **float_kwargs)
+                    else:
                         derivative = numerical_partial_derivative(
                             f,
-                            u_float_param,
+                            label,
                             *float_args,
                             **float_kwargs,
                         )
-                    else:
-                        derivative = deriv_func(*float_args, **float_kwargs)
+
+                    try:
+                        """
+                        In cases where other args are ndarray or UArray the calculation
+                        of the derivative may return an array rather than a scalar 
+                        float.
+                        """
+                        derivative = float(derivative)
+                    except TypeError:
+                        """
+                        This is relevant in cases like
+                        ufloat * uarr
+                        Here we want to pass on UFloat.__mul__ and defer calculation to 
+                        UArray.__rmul__. In such a case derivative may successfully be
+                        calculated as an array but this array can't be easily handled in
+                        the new UCombo generation Returning NotImplemented here defers 
+                        to UArray.__rmul__ which allows the numpy machinery to take over
+                        the vectorization.
+                        """
+                        return NotImplemented
 
                     new_combo_list.append(
-                        (arg.uncertainty, float(derivative))
+                        (arg.uncertainty, derivative)
                     )
-                elif not isinstance(arg, Real):
-                    return NotImplemented
+
 
             new_uncertainty_combo = UCombo(tuple(new_combo_list))
             return UFloat(new_val, new_uncertainty_combo)
@@ -196,16 +220,13 @@ def deriv_func_dict_positional_helper(
     deriv_func_dict = {}
 
     for arg_num, deriv_func in enumerate(deriv_funcs):
-        if deriv_func is None:
-            pass
-        elif callable(deriv_func):
+        if callable(deriv_func):
             pass
         elif isinstance(deriv_func, str):
             deriv_func = func_str_to_positional_func(deriv_func, nargs, eval_locals)
         else:
             raise ValueError(
-                f'Invalid deriv_func: {deriv_func}. Must be None, callable, or a '
-                f'string.'
+                f'Invalid deriv_func: {deriv_func}. Must be callable or a string.'
             )
         deriv_func_dict[arg_num] = deriv_func
     return deriv_func_dict
@@ -217,19 +238,16 @@ class ToUFuncPositional(ToUFunc):
     positional input parameters and return a float.
 
     :param deriv_funcs: List of functions or strings specifying a custom partial
-      derivative function for each parameter of the wrapped function. There must be an
-      element in the list for every parameter of the wrapped function. Elements of the
-      list can be callable functions with the same number of positional arguments
-      as the wrapped function. They can also be string representations of functions such
-      as 'x', 'y', '1/y', '-x/y**2' etc. Unary functions should use 'x' as the parameter
+      derivative function for the first positional parameters of the wrapped function.
+      Elements of the list can be callable functions with the same signature as the
+      wrapped function. They can also be string representations of functions such as
+      'x', 'y', '1/y', '-x/y**2' etc. Unary functions should use 'x' as the parameter
       and binary functions should use 'x' and 'y' as the two parameters respectively.
-      An entry of None will cause the partial derivative to be calculated numerically.
     """
     def __init__(
             self,
             deriv_funcs: Tuple[Optional[PositionalDerivFunc]],
             eval_locals: Optional[Dict[str, Any]] = None,
     ):
-        ufloat_params = tuple(range(len(deriv_funcs)))
         deriv_func_dict = deriv_func_dict_positional_helper(deriv_funcs, eval_locals)
-        super().__init__(ufloat_params, deriv_func_dict)
+        super().__init__(deriv_func_dict)

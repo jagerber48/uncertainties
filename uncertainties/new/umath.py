@@ -22,10 +22,10 @@ float_funcs_dict = {
         '__rtruediv__': ('-x/y**2', '1/y'),  # reversed order __rtruediv__(x, y) = y/x
         '__floordiv__': ('0', '0'),
         '__rfloordiv__': ('0', '0'),
-        '__pow__': (None, None),  # TODO: add these, see `uncertainties` source
-        '__rpow__': (None, None),
-        '__mod__': (None, None),
-        '__rmod__': (None, None),
+        '__pow__': (),  # TODO: add these, see `uncertainties` source
+        '__rpow__': (),
+        '__mod__': (),
+        '__rmod__': (),
     }
 
 
