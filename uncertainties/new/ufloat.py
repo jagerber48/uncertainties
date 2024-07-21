@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from numbers import Real
-from typing import Union
+from typing import TypeVar, Union
 
 from uncertainties.new.ucombo import UAtom, UCombo
 from uncertainties.new.numeric_base import NumericBase
+
+
+Self = TypeVar("Self", bound="UFloat")
 
 
 class UFloat(NumericBase):
@@ -34,15 +37,15 @@ class UFloat(NumericBase):
             self._uncertainty: UCombo = uncertainty
 
     @property
-    def value(self: UFloat) -> float:
+    def value(self: Self) -> float:
         return self._value
 
     @property
-    def uncertainty(self: UFloat) -> UCombo:
+    def uncertainty(self: Self) -> UCombo:
         return self._uncertainty
 
     @property
-    def std_dev(self: UFloat) -> float:
+    def std_dev(self: Self) -> float:
         return self.uncertainty.std_dev
 
     def __str__(self) -> str:
@@ -61,22 +64,22 @@ class UFloat(NumericBase):
 
     # Aliases
     @property
-    def val(self: UFloat) -> float:
+    def val(self: Self) -> float:
         return self.value
 
     @property
-    def nominal_value(self: UFloat) -> float:
+    def nominal_value(self: Self) -> float:
         return self.val
 
     @property
-    def n(self: UFloat) -> float:
+    def n(self: Self) -> float:
         return self.val
 
     @property
-    def s(self: UFloat) -> float:
+    def s(self: Self) -> float:
         return self.std_dev
 
-    def __eq__(self: UFloat, other: UFloat) -> bool:
+    def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
             return False
         val_eq = self.val == other.val
