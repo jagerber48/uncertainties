@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from numbers import Real
-from typing import TypeVar, Union
+from typing import Sequence, TypeVar, Union
 
 from uncertainties.formatting import format_ufloat
 from uncertainties.new.ucombo import UAtom, UCombo
 from uncertainties.new.numeric_base import NumericBase
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+    allow_numpy = False
+else:
+    allow_numpy = True
 
 
 Self = TypeVar("Self", bound="UFloat")
@@ -101,3 +109,62 @@ class UFloat(NumericBase):
 
 def ufloat(val: Real, unc: Real) -> UFloat:
     return UFloat(val, unc)
+
+
+def correlated_values(nominal_values, covariance_matrix):
+    """
+    Return an array of UFloat from a sequence of nominal values and a covariance matrix.
+    """
+    if not allow_numpy:
+        raise ValueError(
+            'numpy import failed. Unable to calculate UFloats from covariance matrix.'
+        )
+
+    n = covariance_matrix.shape[0]
+    L = np.linalg.cholesky(covariance_matrix)
+
+    ufloat_atoms = []
+    for _ in range(n):
+        ufloat_atoms.append(UFloat(0, 1))
+
+    result = np.array(nominal_values) + L @ np.array(ufloat_atoms)
+    return result
+
+
+def covariance_matrix(ufloats: Sequence[UFloat]):
+    """
+    Return the covariance matrix of a sequence of UFloat.
+    """
+    # TODO: The only reason this function requires numpy is because it returns a numpy
+    #   array. It could be made to return a nested list instead. But it seems ok to
+    #   require numpy for users who want a covariance matrix.
+    if not allow_numpy:
+        raise ValueError(
+            'numpy import failed. Unable to calculate covariance matrix.'
+        )
+
+    n = len(ufloats)
+    cov = np.zeros((n, n))
+    atom_weight_dicts = [
+            ufloat.uncertainty.expanded().atom_weight_dict for ufloat in ufloats
+    ]
+    atom_sets = [
+        set(atom_weight_dict.keys()) for atom_weight_dict in atom_weight_dicts
+    ]
+    for i in range(n):
+        atom_weight_dict_i = atom_weight_dicts[i]
+        for j in range(i, n):
+            atom_intersection = atom_sets[i].intersection(atom_sets[j])
+            if not atom_intersection:
+                continue
+            term = 0
+            atom_weight_dict_j = atom_weight_dicts[j]
+            for atom in atom_intersection:
+                term += (
+                        atom_weight_dict_i[atom]
+                        * atom_weight_dict_j[atom]
+                        * atom.std_dev**2
+                )
+            cov[i, j] = term
+            cov[j, i] = term
+    return cov

@@ -1,6 +1,11 @@
 import warnings
 
-from uncertainties.new.ufloat import UFloat, ufloat
+from uncertainties.new.ufloat import (
+    UFloat,
+    ufloat,
+    correlated_values,
+    covariance_matrix,
+)
 from uncertainties.new.umath import (
     add_float_funcs_to_ufloat,
     add_math_funcs_to_umath,
@@ -8,7 +13,7 @@ from uncertainties.new.umath import (
 )
 
 
-__all__ = ["UFloat", "ufloat"]
+__all__ = ["UFloat", "ufloat", "correlated_values", "covariance_matrix"]
 
 
 try:

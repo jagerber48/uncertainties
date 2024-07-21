@@ -120,3 +120,7 @@ class UCombo:
 @dataclass(frozen=True)
 class ExpandedUCombo(UCombo):
     combo: Tuple[Tuple[UAtom, float], ...]
+
+    @property
+    def atom_weight_dict(self: ExpandedCombo) -> dict[UAtom, float]:
+        return {atom: weight for atom, weight in self}
