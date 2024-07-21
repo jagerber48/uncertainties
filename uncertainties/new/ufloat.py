@@ -89,7 +89,7 @@ class UFloat(NumericBase):
         uncertainty_eq = self_expanded_linear_combo == other_expanded_linear_combo
         return val_eq and uncertainty_eq
 
-    def __hash__(self):
+    def __hash__(self: Self) -> int:
         return hash((hash(self.val), hash(self.uncertainty)))
 
 
