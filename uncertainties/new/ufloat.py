@@ -3,6 +3,7 @@ from __future__ import annotations
 from numbers import Real
 from typing import TypeVar, Union
 
+from uncertainties.formatting import format_ufloat
 from uncertainties.new.ucombo import UAtom, UCombo
 from uncertainties.new.numeric_base import NumericBase
 
@@ -48,8 +49,12 @@ class UFloat(NumericBase):
     def std_dev(self: Self) -> float:
         return self.uncertainty.std_dev
 
+    def __format__(self, format_spec: str = "") -> str:
+        return format_ufloat(self, format_spec)
+
     def __str__(self) -> str:
-        return f'{self.val} ± {self.std_dev}'
+        return format(self)
+        # return f'{self.val} ± {self.std_dev}'
 
     def __repr__(self) -> str:
         """
