@@ -42,6 +42,11 @@ class NumericBase:
 
     def __rmod__(self: Self, other: Union[Self, Real]) -> Self: ...
 
+    """
+    Implementation of the methods below enables interoperability with the corresponding
+    numpy ufuncs. See https://numpy.org/doc/stable/reference/ufuncs.html.
+    """
+
     def exp(self: Self) -> Self: ...
 
     def log(self: Self) -> Self: ...
