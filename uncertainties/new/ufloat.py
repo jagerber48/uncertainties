@@ -49,14 +49,14 @@ class UFloat(NumericBase):
     def std_dev(self: Self) -> float:
         return self.uncertainty.std_dev
 
-    def __format__(self, format_spec: str = "") -> str:
+    def __format__(self: Self, format_spec: str = "") -> str:
         return format_ufloat(self, format_spec)
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return format(self)
         # return f'{self.val} ± {self.std_dev}'
 
-    def __repr__(self) -> str:
+    def __repr__(self: Self) -> str:
         """
         Very verbose __repr__ including the entire uncertainty linear combination repr.
         """
@@ -64,7 +64,7 @@ class UFloat(NumericBase):
             f'{self.__class__.__name__}({repr(self.value)}, {repr(self.uncertainty)})'
         )
 
-    def __bool__(self):
+    def __bool__(self: Self) -> bool:
         return self != UFloat(0, 0)
 
     # Aliases
