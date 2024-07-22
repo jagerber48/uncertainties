@@ -2,7 +2,6 @@ import warnings
 
 from uncertainties.new.ufloat import (
     UFloat,
-    ufloat,
     correlated_values,
     covariance_matrix,
 )
@@ -11,9 +10,16 @@ from uncertainties.new.umath import (
     add_math_funcs_to_umath,
     add_ufuncs_to_ufloat,
 )
+from uncertainties.new.func_conversion import ToUFunc, ToUFuncPositional
 
 
-__all__ = ["UFloat", "ufloat", "correlated_values", "covariance_matrix"]
+__all__ = [
+    "UFloat",
+    "correlated_values",
+    "covariance_matrix",
+    "ToUFunc",
+    "ToUFuncPositional",
+]
 
 
 try:

@@ -107,10 +107,6 @@ class UFloat(NumericBase):
         return hash((hash(self.val), hash(self.uncertainty)))
 
 
-def ufloat(val: Real, unc: Real) -> UFloat:
-    return UFloat(val, unc)
-
-
 def correlated_values(nominal_values, covariance_matrix):
     """
     Return an array of UFloat from a sequence of nominal values and a covariance matrix.
