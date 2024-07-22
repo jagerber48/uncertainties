@@ -2,7 +2,6 @@ import numpy as np
 
 from uncertainties.new import UArray, UFloat
 
-UFloat.__repr__ = lambda self: f'{self.n:.3f} +/- {self.s:.3f}'
 
 x = UFloat(1, 0.1)
 y = UFloat(2, 0.2)
