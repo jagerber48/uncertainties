@@ -5,28 +5,12 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from uncertainties.new.ufloat import UFloat, UCombo
 
-SQRT_EPS = sqrt(sys.float_info.epsilon)
 
-
-def get_args_kwargs_list(*args, **kwargs):
-    args_kwargs_list = []
-    for idx, arg in enumerate(args):
-        args_kwargs_list.append((idx, arg))
-    for key, arg in kwargs.items():
-        args_kwargs_list.append((key, arg))
-    return args_kwargs_list
-
-
-def args_kwargs_list_to_args_kwargs(args_kwargs_list):
-    args = []
-    kwargs = {}
-    for label, arg in args_kwargs_list:
-        if isinstance(label, int):
-            args.append(arg)
-        else:
-            kwargs[label] = arg
-    args = tuple(args)
-    return args, kwargs
+# TODO: Much of the code in this module does some manual looping through args and
+#   kwargs. This could be simplified with the use of inspect.signature. However,
+#   unfortunately, some built-in functions in the math library, such as math.log, do not
+#   yet work with inspect.signature. This is the case of python 3.12.
+#   Monitor https://github.com/python/cpython/pull/117671 for updates.
 
 
 def inject_to_args_kwargs(param, injected_arg, *args, **kwargs):
@@ -45,6 +29,9 @@ def inject_to_args_kwargs(param, injected_arg, *args, **kwargs):
     else:
         raise TypeError(f'{param} must be an int or str, not {type(param)}.')
     return new_args, new_kwargs
+
+
+SQRT_EPS = sqrt(sys.float_info.epsilon)
 
 
 def numerical_partial_derivative(
@@ -84,8 +71,16 @@ def numerical_partial_derivative(
     return derivative
 
 
-ParamSpecifier = Union[str, int]
-DerivFuncDict = Optional[Dict[ParamSpecifier, Optional[Callable[..., float]]]]
+def get_args_kwargs_list(*args, **kwargs):
+    args_kwargs_list = []
+    for idx, arg in enumerate(args):
+        args_kwargs_list.append((idx, arg))
+    for key, arg in kwargs.items():
+        args_kwargs_list.append((key, arg))
+    return args_kwargs_list
+
+
+DerivFuncDict = Optional[Dict[Union[str, int], Callable[..., float]]]
 
 
 class ToUFunc:
@@ -119,11 +114,6 @@ class ToUFunc:
 
         @wraps(f)
         def wrapped(*args, **kwargs):
-            # TODO: The construction below could be simplied using inspect.signature.
-            #   However, the math.log, and other math functions do not yet
-            #   (as of python 3.12) work with inspect.signature. Therefore, we need to
-            #   manually loop of args and kwargs.
-            #   Monitor https://github.com/python/cpython/pull/117671
             return_u_val = False
             float_args = []
             for arg in args:
@@ -184,7 +174,6 @@ class ToUFunc:
                     new_combo_list.append(
                         (arg.uncertainty, derivative)
                     )
-
 
             new_uncertainty_combo = UCombo(tuple(new_combo_list))
             return UFloat(new_val, new_uncertainty_combo)
