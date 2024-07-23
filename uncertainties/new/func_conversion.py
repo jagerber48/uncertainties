@@ -137,7 +137,7 @@ class ToUFunc:
 
             args_kwargs_list = get_args_kwargs_list(*args, **kwargs)
 
-            new_combo_list = []
+            new_ucombo = UCombo(())
             for label, arg in args_kwargs_list:
                 if isinstance(arg, UFloat):
                     if label in self.deriv_func_dict:
@@ -171,12 +171,9 @@ class ToUFunc:
                         """
                         return NotImplemented
 
-                    new_combo_list.append(
-                        (arg.uncertainty, derivative)
-                    )
+                    new_ucombo += derivative * arg.uncertainty
 
-            new_uncertainty_combo = UCombo(tuple(new_combo_list))
-            return UFloat(new_val, new_uncertainty_combo)
+            return UFloat(new_val, new_ucombo)
 
         return wrapped
 

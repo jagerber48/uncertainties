@@ -39,8 +39,7 @@ class UFloat(NumericBase):
         self._value: float = float(value)
 
         if isinstance(uncertainty, Real):
-            atom = UAtom(float(uncertainty))
-            combo = UCombo(((atom, 1.0),))
+            combo = UCombo(((UAtom(), float(uncertainty)),))
             self._uncertainty: UCombo = combo
         else:
             self._uncertainty: UCombo = uncertainty
@@ -156,11 +155,7 @@ def covariance_matrix(ufloats: Sequence[UFloat]):
             term = 0
             atom_weight_dict_j = atom_weight_dicts[j]
             for atom in atom_intersection:
-                term += (
-                        atom_weight_dict_i[atom]
-                        * atom_weight_dict_j[atom]
-                        * atom.std_dev**2
-                )
+                term += atom_weight_dict_i[atom] * atom_weight_dict_j[atom]
             cov[i, j] = term
             cov[j, i] = term
     return cov

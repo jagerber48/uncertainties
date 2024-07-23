@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import lru_cache
-from math import isnan, sqrt
+from math import sqrt
 from typing import Dict, List, Tuple, Union
 import uuid
 
@@ -14,18 +14,7 @@ class UAtom:
     Custom class to keep track of "atoms" of uncertainty. Two UncertaintyAtoms are
     always uncorrelated.
     """
-    std_dev: float
     uuid: uuid.UUID = field(default_factory=uuid.uuid4, init=False)
-
-    def __post_init__(self):
-        if self.std_dev < 0:
-            raise ValueError(f'Uncertainty must be non-negative, not {self.std_dev}.')
-
-    def __str__(self):
-        """
-        __str__ drops the uuid
-        """
-        return f'{self.__class__.__name__}({self.std_dev})'
 
 
 @lru_cache(maxsize=None)
@@ -47,7 +36,7 @@ def get_expanded_combo(
 
     combo_list: List[Tuple[UAtom, float]] = []
     for atom, weight in expanded_dict.items():
-        if atom.std_dev == 0 or (weight == 0 and not isnan(atom.std_dev)):
+        if weight == 0:
             continue
         combo_list.append((atom, float(weight)))
     combo_tuple: Tuple[Tuple[UAtom, float], ...] = tuple(combo_list)
@@ -61,10 +50,7 @@ def get_std_dev(combo: ExpandedUCombo) -> float:
     Get the standard deviation corresponding to an UncertaintyCombo. The UncertainyCombo
     is expanded and the weighted UncertaintyAtoms are added in quadrature.
     """
-    list_of_squares = [
-        (weight*atom.std_dev)**2 for atom, weight in combo
-    ]
-    std_dev = sqrt(sum(list_of_squares))
+    std_dev = sqrt(sum([weight**2 for _, weight in combo]))
     return std_dev
 
 
@@ -116,11 +102,27 @@ class UCombo:
                 ret_str += f"{weight}×({term})"
         return ret_str
 
+    def __add__(self, other):
+        if not isinstance(other, (UAtom, UCombo)):
+            return NotImplemented
+        return UCombo(((self, 1.0), (other, 1.0)))
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __mul__(self, scalar):
+        if not isinstance(scalar, float):
+            return NotImplemented
+        return UCombo(((self, scalar),))
+
+    def __rmul__(self, scalar):
+        return self.__mul__(scalar)
+
 
 @dataclass(frozen=True)
 class ExpandedUCombo(UCombo):
     combo: Tuple[Tuple[UAtom, float], ...]
 
     @property
-    def atom_weight_dict(self: ExpandedCombo) -> dict[UAtom, float]:
+    def atom_weight_dict(self: ExpandedUCombo) -> dict[UAtom, float]:
         return {atom: weight for atom, weight in self}
