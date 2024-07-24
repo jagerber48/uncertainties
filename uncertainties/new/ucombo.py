@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from math import sqrt
 from numbers import Real
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple, Union
 import uuid
 
 
@@ -32,17 +32,14 @@ def get_expanded_combo(
             expanded_dict[term] += term_weight
         else:
             expanded_term = get_expanded_combo(term)
-            for atom, atom_weight in expanded_term:
+            for atom, atom_weight in expanded_term.combo.items():
                 expanded_dict[atom] += atom_weight * term_weight
 
-    combo_list: List[Tuple[UAtom, float]] = []
-    for atom, weight in expanded_dict.items():
-        if weight == 0:
-            continue
-        combo_list.append((atom, float(weight)))
-    combo_tuple: Tuple[Tuple[UAtom, float], ...] = tuple(combo_list)
+    pruned_expanded_dict = {
+        atom: weight for atom, weight in expanded_dict.items() if weight != 0
+    }
 
-    return ExpandedUCombo(combo_tuple)
+    return ExpandedUCombo(pruned_expanded_dict)
 
 
 @lru_cache(maxsize=None)
@@ -51,7 +48,7 @@ def get_std_dev(combo: ExpandedUCombo) -> float:
     Get the standard deviation corresponding to an UncertaintyCombo. The UncertainyCombo
     is expanded and the weighted UncertaintyAtoms are added in quadrature.
     """
-    std_dev = sqrt(sum([weight**2 for _, weight in combo]))
+    std_dev = sqrt(sum([weight**2 for weight in combo.combo.values()]))
     return std_dev
 
 
@@ -81,12 +78,15 @@ class UCombo:
     def __iter__(self):
         return iter(self.combo)
 
-    def expanded(self: UCombo) -> ExpandedUCombo:
+    def get_expanded(self: UCombo) -> ExpandedUCombo:
         return get_expanded_combo(self)
 
     @property
     def std_dev(self: UCombo) -> float:
-        return get_std_dev(self.expanded())
+        return self.get_expanded().std_dev
+
+    # def __eq__(self, other):
+    #     return self.get_expanded() == other.get_expanded()
 
     def __str__(self):
         ret_str = ""
@@ -102,6 +102,9 @@ class UCombo:
             else:
                 ret_str += f"{weight}×({term})"
         return ret_str
+
+    def __repr__(self):
+        return str(self)
 
     def __add__(self, other):
         if not isinstance(other, (UAtom, UCombo)):
@@ -121,9 +124,29 @@ class UCombo:
 
 
 @dataclass(frozen=True)
-class ExpandedUCombo(UCombo):
-    combo: Tuple[Tuple[UAtom, float], ...]
+class ExpandedUCombo:
+    combo: dict[UAtom, float]
+
+    def __iter__(self):
+        return iter(self.combo)
 
     @property
-    def atom_weight_dict(self: ExpandedUCombo) -> dict[UAtom, float]:
-        return {atom: weight for atom, weight in self}
+    def std_dev(self: ExpandedUCombo) -> float:
+        return get_std_dev(self)
+
+    def __hash__(self):
+        return hash((tuple(self.combo.keys()), tuple(self.combo.values())))
+
+    def __str__(self):
+        ret_str = ""
+        first = True
+        for term, weight in self.combo.items():
+            if not first:
+                ret_str += " + "
+            else:
+                first = False
+            ret_str += f"{weight}×{term}"
+        return ret_str
+
+    def __repr__(self):
+        return str(self)

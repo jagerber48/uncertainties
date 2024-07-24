@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from math import isfinite, isnan, isinf
 from numbers import Real
 from typing import Sequence, TypeVar, Union
 
@@ -82,25 +83,38 @@ class UFloat(NumericBase):
 
     @property
     def nominal_value(self: Self) -> float:
-        return self.val
+        return self.value
 
     @property
     def n(self: Self) -> float:
-        return self.val
+        return self.value
 
     @property
     def s(self: Self) -> float:
         return self.std_dev
 
+    @property
+    def u(self: Self) -> UCombo:
+        return self.uncertainty
+
     def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
             return False
-        val_eq = self.val == other.val
+        # val_eq = self.val == other.val
+        #
+        # self_expanded_linear_combo = self.uncertainty.get()
+        # other_expanded_linear_combo = other.uncertainty.expanded()
+        # uncertainty_eq = self_expanded_linear_combo == other_expanded_linear_combo
+        return self.n == other.n and self.u.get_expanded() == other.u.get_expanded()
 
-        self_expanded_linear_combo = self.uncertainty.expanded()
-        other_expanded_linear_combo = other.uncertainty.expanded()
-        uncertainty_eq = self_expanded_linear_combo == other_expanded_linear_combo
-        return val_eq and uncertainty_eq
+    def isfinite(self: Self) -> bool:
+        return isfinite(self.value)
+
+    def isinf(self: Self) -> bool:
+        return isinf(self.value)
+
+    def isnan(self: Self) -> bool:
+        return isnan(self.value)
 
     def __hash__(self: Self) -> int:
         return hash((hash(self.val), hash(self.uncertainty)))
@@ -141,7 +155,7 @@ def covariance_matrix(ufloats: Sequence[UFloat]):
     n = len(ufloats)
     cov = np.zeros((n, n))
     atom_weight_dicts = [
-            ufloat.uncertainty.expanded().atom_weight_dict for ufloat in ufloats
+            ufloat.uncertainty.get_expanded().combo for ufloat in ufloats
     ]
     atom_sets = [
         set(atom_weight_dict.keys()) for atom_weight_dict in atom_weight_dicts

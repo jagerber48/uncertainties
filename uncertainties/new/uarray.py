@@ -22,7 +22,7 @@ class UArray(np.ndarray):
         return obj
 
     @property
-    def nominal_value(self):
+    def value(self):
         return np.array(np.vectorize(lambda uval: uval.value)(self), dtype=float)
 
     @property
@@ -33,9 +33,14 @@ class UArray(np.ndarray):
     def uncertainty(self):
         return np.array(np.vectorize(lambda uval: uval.uncertainty)(self), dtype=object)
 
+    @property
+    def expanded_uncertainty(self):
+        return np.array(np.vectorize(lambda uval: uval.uncertainty.get_expanded())(self), dtype=object)
+
+
     @classmethod
-    def from_val_arr_std_dev_arr(cls, val_arr, std_dev_arr) -> UArray:
-        return cls(np.vectorize(UFloat)(val_arr, std_dev_arr))
+    def from_arrays(cls, value_array, uncertainty_array) -> UArray:
+        return cls(np.vectorize(UFloat)(value_array, uncertainty_array))
 
     def __str__(self: UArray) -> str:
         return f"{self.__class__.__name__}({super().__str__()})"
@@ -56,6 +61,27 @@ class UArray(np.ndarray):
         if result.ndim == 0:
             return result.item()
         return result
+
+    # Aliases
+    @property
+    def val(self):
+        return self.value
+
+    @property
+    def nominal_value(self):
+        return self.value
+
+    @property
+    def n(self):
+        return self.value
+
+    @property
+    def s(self):
+        return self.std_dev
+
+    @property
+    def u(self):
+        return self.uncertainty
 
 
 SQRT_EPS = sqrt(sys.float_info.epsilon)
@@ -174,7 +200,7 @@ def to_uarray_func(func):
                         )
                         ucombo_array += deriv_arr * sub_arg.item().uncertainty
 
-        return UArray.from_val_arr_std_dev_arr(
+        return UArray.from_arrays(
             new_nominal_array,
             ucombo_array,
         )
