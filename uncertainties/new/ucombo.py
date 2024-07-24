@@ -17,6 +17,10 @@ class UAtom:
     """
     uuid: uuid.UUID = field(default_factory=uuid.uuid4, init=False)
 
+    def __str__(self):
+        uuid_str = f'{str(self.uuid)[0:2]}..{str(self.uuid)[-3:-1]}'
+        return f'{self.__class__.__name__}(uuid={uuid_str})'
+
 
 @lru_cache(maxsize=None)
 def get_expanded_combo(
