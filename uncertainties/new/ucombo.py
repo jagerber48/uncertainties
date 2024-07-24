@@ -48,7 +48,7 @@ def get_std_dev(combo: ExpandedUCombo) -> float:
     Get the standard deviation corresponding to an UncertaintyCombo. The UncertainyCombo
     is expanded and the weighted UncertaintyAtoms are added in quadrature.
     """
-    std_dev = sqrt(sum([weight**2 for weight in combo.combo.values()]))
+    std_dev = sqrt(sum([weight**2 for weight in combo.values()]))
     return std_dev
 
 
@@ -84,9 +84,6 @@ class UCombo:
     @property
     def std_dev(self: UCombo) -> float:
         return self.get_expanded().std_dev
-
-    # def __eq__(self, other):
-    #     return self.get_expanded() == other.get_expanded()
 
     def __str__(self):
         ret_str = ""
@@ -127,9 +124,6 @@ class UCombo:
 class ExpandedUCombo:
     combo: dict[UAtom, float]
 
-    def __iter__(self):
-        return iter(self.combo)
-
     @property
     def std_dev(self: ExpandedUCombo) -> float:
         return get_std_dev(self)
@@ -150,3 +144,22 @@ class ExpandedUCombo:
 
     def __repr__(self):
         return str(self)
+
+    def __getitem__(self, item):
+        return self.combo[item]
+
+    def __len__(self):
+        return len(self.combo)
+
+    def __iter__(self):
+        return iter(self.combo)
+
+    def keys(self):
+        return self.combo.keys()
+
+    def values(self):
+        return self.combo.values()
+
+    def items(self):
+        return self.combo.items()
+
