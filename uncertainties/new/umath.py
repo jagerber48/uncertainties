@@ -5,7 +5,7 @@ import sys
 from typing import Union
 
 from uncertainties.new.ufloat import UFloat
-from uncertainties.new.func_conversion import ToUFuncPositional
+from uncertainties.new.func_conversion import to_ufloat_pos_func
 
 
 float_funcs_dict = {
@@ -61,7 +61,7 @@ def add_float_funcs_to_ufloat():
     #   complexity is worth the performance.
     for func_name, deriv_funcs in float_funcs_dict.items():
         float_func = getattr(float, func_name)
-        ufloat_ufunc = ToUFuncPositional(deriv_funcs)(float_func)
+        ufloat_ufunc = to_ufloat_pos_func(deriv_funcs)(float_func)
         if func_name in reflexive_funcs:
             ufloat_ufunc = other_float_check_wrapper(ufloat_ufunc)
         setattr(UFloat, func_name, ufloat_ufunc)
@@ -180,7 +180,7 @@ this_module = sys.modules[__name__]
 def add_math_funcs_to_umath():
     for func_name, deriv_funcs in math_funcs_dict.items():
         func = getattr(math, func_name)
-        ufunc = ToUFuncPositional(deriv_funcs, eval_locals={"math": math})(func)
+        ufunc = to_ufloat_pos_func(deriv_funcs, eval_locals={"math": math})(func)
         setattr(this_module, func_name, ufunc)
 
 

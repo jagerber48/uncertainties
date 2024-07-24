@@ -83,7 +83,7 @@ def get_args_kwargs_list(*args, **kwargs):
 DerivFuncDict = Optional[Dict[Union[str, int], Callable[..., float]]]
 
 
-class ToUFunc:
+class to_ufloat_func:
     """
     Decorator which converts a function which accepts real numbers and returns a real
     number into a function which accepts UFloats and returns a UFloat. The returned
@@ -198,7 +198,7 @@ def deriv_func_dict_positional_helper(
     return deriv_func_dict
 
 
-class ToUFuncPositional(ToUFunc):
+class to_ufloat_pos_func(to_ufloat_func):
     """
     Helper decorator for ToUFunc for functions which accept one or two floats as
     positional input parameters and return a float.
