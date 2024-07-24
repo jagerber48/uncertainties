@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import lru_cache
 from math import sqrt
+from numbers import Real
 from typing import Dict, List, Tuple, Union
 import uuid
 
@@ -111,9 +112,9 @@ class UCombo:
         return self.__add__(other)
 
     def __mul__(self, scalar):
-        if not isinstance(scalar, float):
+        if not isinstance(scalar, Real):
             return NotImplemented
-        return UCombo(((self, scalar),))
+        return UCombo(((self, float(scalar)),))
 
     def __rmul__(self, scalar):
         return self.__mul__(scalar)

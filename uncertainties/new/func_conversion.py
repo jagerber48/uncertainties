@@ -150,27 +150,7 @@ class ToUFunc:
                             *float_args,
                             **float_kwargs,
                         )
-
-                    try:
-                        """
-                        In cases where other args are ndarray or UArray the calculation
-                        of the derivative may return an array rather than a scalar 
-                        float.
-                        """
                         derivative = float(derivative)
-                    except TypeError:
-                        """
-                        This is relevant in cases like
-                        ufloat * uarr
-                        Here we want to pass on UFloat.__mul__ and defer calculation to 
-                        UArray.__rmul__. In such a case derivative may successfully be
-                        calculated as an array but this array can't be easily handled in
-                        the new UCombo generation Returning NotImplemented here defers 
-                        to UArray.__rmul__ which allows the numpy machinery to take over
-                        the vectorization.
-                        """
-                        return NotImplemented
-
                     new_ucombo += derivative * arg.uncertainty
 
             return UFloat(new_val, new_ucombo)

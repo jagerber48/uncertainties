@@ -1,5 +1,6 @@
 import math
 from numbers import Real
+from functools import wraps
 import sys
 from typing import Union
 
@@ -29,6 +30,26 @@ float_funcs_dict = {
     }
 
 
+reflexive_funcs = [
+    '__add__',
+    '__sub__',
+    '__mul__',
+    '__truediv__',
+    '__floordiv__',
+    '__pow__',
+    '__mod__',
+]
+
+
+def other_float_check_wrapper(func):
+    @wraps(func)
+    def wrapped(self, other):
+        if not isinstance(other, (Real, UFloat)):
+            return NotImplemented
+        return func(self, other)
+    return wrapped
+
+
 def add_float_funcs_to_ufloat():
     """
     Monkey-patch common float operations from the float class over to the UFloat class
@@ -41,6 +62,8 @@ def add_float_funcs_to_ufloat():
     for func_name, deriv_funcs in float_funcs_dict.items():
         float_func = getattr(float, func_name)
         ufloat_ufunc = ToUFuncPositional(deriv_funcs)(float_func)
+        if func_name in reflexive_funcs:
+            ufloat_ufunc = other_float_check_wrapper(ufloat_ufunc)
         setattr(UFloat, func_name, ufloat_ufunc)
 
 
