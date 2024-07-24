@@ -78,12 +78,13 @@ class UCombo:
     def __iter__(self):
         return iter(self.combo)
 
-    def get_expanded(self: UCombo) -> ExpandedUCombo:
+    @property
+    def expanded(self: UCombo) -> ExpandedUCombo:
         return get_expanded_combo(self)
 
     @property
     def std_dev(self: UCombo) -> float:
-        return self.get_expanded().std_dev
+        return self.expanded.std_dev
 
     def __str__(self):
         ret_str = ""
@@ -162,4 +163,3 @@ class ExpandedUCombo:
 
     def items(self):
         return self.combo.items()
-

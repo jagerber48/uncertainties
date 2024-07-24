@@ -35,8 +35,10 @@ class UArray(np.ndarray):
 
     @property
     def expanded_uncertainty(self):
-        return np.array(np.vectorize(lambda uval: uval.uncertainty.get_expanded())(self), dtype=object)
-
+        return np.array(
+            np.vectorize(lambda uval: uval.expanded_uncertainty)(self)
+            , dtype=object
+        )
 
     @classmethod
     def from_arrays(cls, value_array, uncertainty_array) -> UArray:

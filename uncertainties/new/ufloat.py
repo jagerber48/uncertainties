@@ -54,6 +54,10 @@ class UFloat(NumericBase):
         return self._uncertainty
 
     @property
+    def expanded_uncertainty(self: Self) -> UCombo:
+        return self.uncertainty.expanded
+
+    @property
     def std_dev(self: Self) -> float:
         return self.uncertainty.std_dev
 
@@ -100,12 +104,9 @@ class UFloat(NumericBase):
     def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
             return False
-        # val_eq = self.val == other.val
-        #
-        # self_expanded_linear_combo = self.uncertainty.get()
-        # other_expanded_linear_combo = other.uncertainty.expanded()
-        # uncertainty_eq = self_expanded_linear_combo == other_expanded_linear_combo
-        return self.n == other.n and self.u.get_expanded() == other.u.get_expanded()
+        value_equal = self.n == other.n
+        uncertainty_equal = self.expanded_uncertainty == other.expanded_uncertainty
+        return value_equal and uncertainty_equal
 
     def isfinite(self: Self) -> bool:
         return isfinite(self.value)
@@ -155,7 +156,7 @@ def covariance_matrix(ufloats: Sequence[UFloat]):
     n = len(ufloats)
     cov = np.zeros((n, n))
     atom_weight_dicts = [
-            ufloat.uncertainty.get_expanded().combo for ufloat in ufloats
+            ufloat.uncertainty.expanded for ufloat in ufloats
     ]
     atom_sets = [
         set(atom_weight_dict.keys()) for atom_weight_dict in atom_weight_dicts
