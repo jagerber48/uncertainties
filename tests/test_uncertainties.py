@@ -8,17 +8,15 @@ import pytest
 
 from uncertainties import formatting
 from uncertainties import umath
+from uncertainties.new.covariance import covariance_matrix
 from uncertainties.new.func_conversion import numerical_partial_derivative
-from uncertainties.new.umath import float_funcs_dict
 from uncertainties.new.ufloat import UFloat, ufloat, ufloat_fromstr
-from uncertainties.ops import modified_operators, modified_ops_with_reflection
 from helpers import (
     power_special_cases,
     power_all_cases,
     power_wrt_ref,
     numbers_close,
     ufloats_close,
-    compare_derivatives,
 )
 
 
@@ -248,7 +246,9 @@ def test_deriv_propagation(func, args, std_dev):
             assert output_weight == deriv * input_weight
 
 
-
+# TODO: This test is interesting because I think it should have the exact opposite
+#   behavior as it does. That is, coopy a UFloat should copy both the nominal value and
+#   the uncertainty linear combination, i.e. the correlations.
 def test_copy():
     "Standard copy module integration"
     import gc
@@ -257,35 +257,30 @@ def test_copy():
     assert x == x
 
     y = copy.copy(x)
-    assert x != y
-    assert not (x == y)
-    assert y in y.derivatives.keys()  # y must not copy the dependence on x
+    assert x == y
+    assert not (x != y)
+    assert x.uncertainty == y.uncertainty
 
     z = copy.deepcopy(x)
-    assert x != z
+    assert x == z
 
     # Copy tests on expressions:
     t = x + 2 * z
-    # t depends on x:
-    assert x in t.derivatives
+    # t shares UAtom dependence with x
+    assert set(x.uncertainty.expanded_dict).issubset(set(t.uncertainty.expanded_dict))
 
     # The relationship between the copy of an expression and the
     # original variables should be preserved:
     t_copy = copy.copy(t)
-    # Shallow copy: the variables on which t depends are not copied:
-    assert x in t_copy.derivatives
-    assert uncert_core.covariance_matrix([t, z]) == uncert_core.covariance_matrix(
-        [t_copy, z]
-    )
+    # Covariance is preserved through a shallow copy:
+    assert set(x.uncertainty.expanded_dict).issubset(set(t_copy.uncertainty.expanded_dict))
+    assert (covariance_matrix([t, z]) == covariance_matrix([t_copy, z])).all
 
-    # However, the relationship between a deep copy and the original
-    # variables should be broken, since the deep copy created new,
-    # independent variables:
+    # Covariance is preserved through a deep copy
     t_deepcopy = copy.deepcopy(t)
-    assert x not in t_deepcopy.derivatives
-    assert uncert_core.covariance_matrix([t, z]) != uncert_core.covariance_matrix(
-        [t_deepcopy, z]
-    )
+    assert set(x.uncertainty.expanded_dict).issubset(set(t_deepcopy.uncertainty.expanded_dict))
+    assert (covariance_matrix([t, z]) == covariance_matrix([t_deepcopy, z])).all
+
 
     # Test of implementations with weak references:
 
@@ -297,7 +292,7 @@ def test_copy():
 
     gc.collect()
 
-    assert y in list(y.derivatives.keys())
+    assert y == z
 
 
 ## Classes for the pickling tests (put at the module level, so that
