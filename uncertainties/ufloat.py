@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from math import isfinite, isnan, isinf
 from numbers import Real
-from typing import Sequence, TypeVar, Union
+from typing import Optional, TypeVar, Union
 
 from uncertainties.formatting import format_ufloat
-from uncertainties.ucombo import UAtom, UCombo
 from uncertainties.numeric_base import NumericBase
+from uncertainties.ucombo import UAtom, UCombo
+from uncertainties.parsing import str_to_number_with_uncert
 
 try:
     import numpy as np
@@ -31,9 +32,14 @@ class UFloat(NumericBase):
     propagation.
     """
 
-    __slots__ = ["_value", "_uncertainty"]
+    __slots__ = ["_value", "_uncertainty", "tag"]
 
-    def __init__(self, value: Real, uncertainty: Union[UCombo, Real]):
+    def __init__(
+            self,
+            value: Real,
+            uncertainty: Union[UCombo, Real],
+            tag: Optional[str]=None,
+    ):
         """
         Using properties for value and uncertainty makes them essentially immutable.
         """
@@ -42,7 +48,7 @@ class UFloat(NumericBase):
         if isinstance(uncertainty, Real):
             combo = UCombo(
                 (
-                    (UAtom(), float(uncertainty)),
+                    (UAtom(tag=tag), float(uncertainty)),
                 )
             )
             self._uncertainty: UCombo = combo
@@ -69,6 +75,10 @@ class UFloat(NumericBase):
             return (value - self.value) / self.std_dev
         except ZeroDivisionError:
             return float("nan")
+
+    @property
+    def error_components(self: Self) -> dict[UAtom, float]:
+        return self.uncertainty.expanded_dict
 
     def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
@@ -126,56 +136,84 @@ class UFloat(NumericBase):
         return hash((hash(self.val), hash(self.uncertainty)))
 
 
-def correlated_values(nominal_values, covariance_matrix):
+def ufloat(value: float, uncertainty: float, tag: Optional[str] = None) -> UFloat:
+    return UFloat(value, uncertainty, tag)
+
+
+def ufloat_fromstr(ufloat_str: str, tag: Optional[str] = None):
     """
-    Return an array of UFloat from a sequence of nominal values and a covariance matrix.
+    Create an uncertainties Variable from a string representation.
+    Several representation formats are supported.
+
+    Arguments:
+    ----------
+    ufloat_str: string
+        string representation of a value with uncertainty
+    tag:   string or `None`
+        optional tag for tracing and organizing Variables ['None']
+
+    Returns:
+    --------
+    uncertainties Variable.
+
+    Notes:
+    --------
+    1. Invalid representations raise a ValueError.
+
+    2. Using the form "nominal(std)" where "std" is an integer creates
+       a Variable with "std" giving the least significant digit(s).
+       That is, "1.25(3)" is the same as `ufloat(1.25, 0.03)`,
+       while "1.25(3.)" is the same as `ufloat(1.25, 3.)`
+
+    Examples:
+    -----------
+
+    >>> x = ufloat_fromsstr("12.58+/-0.23")  # = ufloat(12.58, 0.23)
+    >>> x = ufloat_fromsstr("12.58 ± 0.23")  # = ufloat(12.58, 0.23)
+    >>> x = ufloat_fromsstr("3.85e5 +/- 2.3e4")  # = ufloat(3.8e5, 2.3e4)
+    >>> x = ufloat_fromsstr("(38.5 +/- 2.3)e4")  # = ufloat(3.8e5, 2.3e4)
+
+    >>> x = ufloat_fromsstr("72.1(2.2)")  # = ufloat(72.1, 2.2)
+    >>> x = ufloat_fromsstr("72.15(4)")  # = ufloat(72.15, 0.04)
+    >>> x = ufloat_fromstr("680(41)e-3")  # = ufloat(0.68, 0.041)
+    >>> x = ufloat_fromstr("23.2")  # = ufloat(23.2, 0.1)
+    >>> x = ufloat_fromstr("23.29")  # = ufloat(23.29, 0.01)
+
+    >>> x = ufloat_fromstr("680.3(nan)") # = ufloat(680.3, numpy.nan)
     """
-    if not allow_numpy:
-        raise ValueError(
-            'numpy import failed. Unable to calculate UFloats from covariance matrix.'
-        )
-
-    n = covariance_matrix.shape[0]
-    L = np.linalg.cholesky(covariance_matrix)
-
-    ufloat_atoms = []
-    for _ in range(n):
-        ufloat_atoms.append(UFloat(0, 1))
-
-    result = np.array(nominal_values) + L @ np.array(ufloat_atoms)
-    return result
+    (nom, std) = str_to_number_with_uncert(ufloat_str.strip())
+    return UFloat(nom, std, tag)
 
 
-def covariance_matrix(ufloats: Sequence[UFloat]):
+def nominal_value(x: Union[UFloat, Real]) -> float:
     """
-    Return the covariance matrix of a sequence of UFloat.
-    """
-    # TODO: The only reason this function requires numpy is because it returns a numpy
-    #   array. It could be made to return a nested list instead. But it seems ok to
-    #   require numpy for users who want a covariance matrix.
-    if not allow_numpy:
-        raise ValueError(
-            'numpy import failed. Unable to calculate covariance matrix.'
-        )
+    Return the nominal value of x if it is a quantity with
+    uncertainty (i.e., an AffineScalarFunc object); otherwise, returns
+    x unchanged.
 
-    n = len(ufloats)
-    cov = np.zeros((n, n))
-    atom_weight_dicts = [
-            ufloat.uncertainty.expanded_dict for ufloat in ufloats
-    ]
-    atom_sets = [
-        set(atom_weight_dict.keys()) for atom_weight_dict in atom_weight_dicts
-    ]
-    for i in range(n):
-        atom_weight_dict_i = atom_weight_dicts[i]
-        for j in range(i, n):
-            atom_intersection = atom_sets[i].intersection(atom_sets[j])
-            if not atom_intersection:
-                continue
-            term = 0
-            atom_weight_dict_j = atom_weight_dicts[j]
-            for atom in atom_intersection:
-                term += atom_weight_dict_i[atom] * atom_weight_dict_j[atom]
-            cov[i, j] = term
-            cov[j, i] = term
-    return cov
+    This utility function is useful for transforming a series of
+    numbers, when only some of them generally carry an uncertainty.
+    """
+    if isinstance(x, UFloat):
+        return x.value
+    elif isinstance(x, Real):
+        return float(x)
+    else:
+        raise TypeError(f"x must be a UFloat or Real, not {type(x)}")
+
+
+def std_dev(x: Union[UFloat, Real]) -> float:
+    """
+    Return the standard deviation of x if it is a quantity with
+    uncertainty (i.e., an AffineScalarFunc object); otherwise, returns
+    the float 0.
+
+    This utility function is useful for transforming a series of
+    numbers, when only some of them generally carry an uncertainty.
+    """
+    if isinstance(x, UFloat):
+        return x.std_dev
+    elif isinstance(x, Real):
+        return 0.0
+    else:
+        raise TypeError(f"x must be a UFloat or Real, not {type(x)}")
