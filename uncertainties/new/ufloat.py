@@ -59,7 +59,7 @@ class UFloat(NumericBase):
     def std_dev(self: Self) -> float:
         return self.uncertainty.std_dev
 
-    def std_score(self, value):
+    def std_score(self: Self, value: float) -> float:
         """
         Return (value - nominal_value), in units of the standard deviation.
         """
