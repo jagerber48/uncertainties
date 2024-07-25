@@ -228,6 +228,11 @@ from uncertainties.covariance import (
     correlated_values,
     correlated_values_norm
 )
+from uncertainties.ops import add_arithmetic_ops, add_comparative_ops
+
+
+add_arithmetic_ops(UFloat)
+add_comparative_ops(UFloat)
 
 
 __all__ = [
