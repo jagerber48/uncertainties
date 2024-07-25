@@ -396,6 +396,7 @@ def test_int_div():
     assert x.std_dev == 0.0
 
 
+# TODO: I don't think the non-trichomatic <, <=, >, >= should be defined on UFloat.
 def test_comparison_ops():
     "Test of comparison operators"
 
@@ -404,9 +405,13 @@ def test_comparison_ops():
     a = ufloat(-3, 0)
     b = ufloat(10, 0)
     c = ufloat(10, 0)
-    assert a < b
-    assert a < 3
-    assert 3 < b  # This is first given to int.__lt__()
+
+    with pytest.raises(TypeError):
+        assert a < b
+    with pytest.raises(TypeError):
+        assert a < 3
+    with pytest.raises(TypeError):
+        assert 3 < b  # This is first given to int.__lt__()
     assert b == c
 
     x = ufloat(3, 0.1)
@@ -417,11 +422,14 @@ def test_comparison_ops():
     # different intervals can still do "if 0 < x < 1:...".  This
     # supposes again that errors are "small" (as for the estimate of
     # the standard error).
-    assert x > 1
+    with pytest.raises(TypeError):
+        assert x > 1
 
     # The limit case is not obvious:
-    assert not (x >= 3)
-    assert not (x < 3)
+    with pytest.raises(TypeError):
+        assert not (x >= 3)
+    with pytest.raises(TypeError):
+        assert not (x < 3)
 
     assert x == x
     # Comparaison between Variable and AffineScalarFunc:
@@ -440,93 +448,95 @@ def test_comparison_ops():
 
     # Comparison to other types should work:
     assert x is not None  # Not comparable
-    assert x - x == 0  # Comparable, even though the types are different
+    assert x - x != 0  # Can never compare UFloat to float, even for 0.
+    assert x - x == ufloat(0, 0)
     assert x != [1, 2]
 
     ####################
 
-    # Checks of the semantics of logical operations: they return True
-    # iff they are always True when the parameters vary in an
-    # infinitesimal interval inside sigma (sigma == 0 is a special
-    # case):
-
-    def test_all_comparison_ops(x, y):
-        """
-        Takes two Variable objects.
-
-        Fails if any comparison operation fails to follow the proper
-        semantics: a comparison only returns True if the correspond float
-        comparison results are True for all the float values taken by
-        the variables (of x and y) when they vary in an infinitesimal
-        neighborhood within their uncertainty.
-
-        This test is stochastic: it may, exceptionally, fail for
-        correctly implemented comparison operators.
-        """
-
-        def random_float(var):
-            """
-            Returns a random value for Variable var, in an
-            infinitesimal interval withing its uncertainty.  The case
-            of a zero uncertainty is special.
-            """
-            return (random.random() - 0.5) * min(var.std_dev, 1e-5) + var.nominal_value
-
-        # All operations are tested:
-        for op in ["__%s__" % name for name in ("ne", "eq", "lt", "le", "gt", "ge")]:
-            try:
-                float_func = getattr(float, op)
-            except AttributeError:  # Python 2.3's floats don't have __ne__
-                continue
-
-            # Determination of the correct truth value of func(x, y):
-
-            sampled_results = []
-
-            # The "main" value is an important particular case, and
-            # the starting value for the final result
-            # (correct_result):
-
-            sampled_results.append(float_func(x.nominal_value, y.nominal_value))
-
-            for check_num in range(50):  # Many points checked
-                sampled_results.append(float_func(random_float(x), random_float(y)))
-
-            min_result = min(sampled_results)
-            max_result = max(sampled_results)
-
-            if min_result == max_result:
-                correct_result = min_result
-            else:
-                # Almost all results must be True, for the final value
-                # to be True:
-                num_min_result = sampled_results.count(min_result)
-
-                # 1 exception is considered OK:
-                correct_result = num_min_result == 1
-
-            try:
-                assert correct_result == getattr(x, op)(y)
-            except AssertionError:
-                print("Sampling results:", sampled_results)
-                raise Exception(
-                    "Semantic value of %s %s (%s) %s not"
-                    " correctly reproduced." % (x, op, y, correct_result)
-                )
-
-    # With different numbers:
-    test_all_comparison_ops(ufloat(3, 0.1), ufloat(-2, 0.1))
-    test_all_comparison_ops(
-        ufloat(0, 0),  # Special number
-        ufloat(1, 1),
-    )
-    test_all_comparison_ops(
-        ufloat(0, 0),  # Special number
-        ufloat(0, 0.1),
-    )
-    # With identical numbers:
-    test_all_comparison_ops(ufloat(0, 0), ufloat(0, 0))
-    test_all_comparison_ops(ufloat(1, 1), ufloat(1, 1))
+    # TODO: These tests just don't make sense if we reject <, <=, >=, > on UFloat.
+    # # Checks of the semantics of logical operations: they return True
+    # # iff they are always True when the parameters vary in an
+    # # infinitesimal interval inside sigma (sigma == 0 is a special
+    # # case):
+    #
+    # def test_all_comparison_ops(x, y):
+    #     """
+    #     Takes two Variable objects.
+    #
+    #     Fails if any comparison operation fails to follow the proper
+    #     semantics: a comparison only returns True if the correspond float
+    #     comparison results are True for all the float values taken by
+    #     the variables (of x and y) when they vary in an infinitesimal
+    #     neighborhood within their uncertainty.
+    #
+    #     This test is stochastic: it may, exceptionally, fail for
+    #     correctly implemented comparison operators.
+    #     """
+    #
+    #     def random_float(var):
+    #         """
+    #         Returns a random value for Variable var, in an
+    #         infinitesimal interval withing its uncertainty.  The case
+    #         of a zero uncertainty is special.
+    #         """
+    #         return (random.random() - 0.5) * min(var.std_dev, 1e-5) + var.nominal_value
+    #
+    #     # All operations are tested:
+    #     for op in ["__%s__" % name for name in ("neq", "eq", "lt", "le", "gt", "ge")]:
+    #         try:
+    #             float_func = getattr(float, op)
+    #         except AttributeError:  # Python 2.3's floats don't have __ne__
+    #             continue
+    #
+    #         # Determination of the correct truth value of func(x, y):
+    #
+    #         sampled_results = []
+    #
+    #         # The "main" value is an important particular case, and
+    #         # the starting value for the final result
+    #         # (correct_result):
+    #
+    #         sampled_results.append(float_func(x.nominal_value, y.nominal_value))
+    #
+    #         for check_num in range(50):  # Many points checked
+    #             sampled_results.append(float_func(random_float(x), random_float(y)))
+    #
+    #         min_result = min(sampled_results)
+    #         max_result = max(sampled_results)
+    #
+    #         if min_result == max_result:
+    #             correct_result = min_result
+    #         else:
+    #             # Almost all results must be True, for the final value
+    #             # to be True:
+    #             num_min_result = sampled_results.count(min_result)
+    #
+    #             # 1 exception is considered OK:
+    #             correct_result = num_min_result == 1
+    #
+    #         try:
+    #             assert correct_result == getattr(x, op)(y)
+    #         except AssertionError:
+    #             print("Sampling results:", sampled_results)
+    #             raise Exception(
+    #                 "Semantic value of %s %s (%s) %s not"
+    #                 " correctly reproduced." % (x, op, y, correct_result)
+    #             )
+    #
+    # # With different numbers:
+    # test_all_comparison_ops(ufloat(3, 0.1), ufloat(-2, 0.1))
+    # test_all_comparison_ops(
+    #     ufloat(0, 0),  # Special number
+    #     ufloat(1, 1),
+    # )
+    # test_all_comparison_ops(
+    #     ufloat(0, 0),  # Special number
+    #     ufloat(0, 0.1),
+    # )
+    # # With identical numbers:
+    # test_all_comparison_ops(ufloat(0, 0), ufloat(0, 0))
+    # test_all_comparison_ops(ufloat(1, 1), ufloat(1, 1))
 
 
 def test_logic():
