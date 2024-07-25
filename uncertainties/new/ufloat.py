@@ -44,6 +44,9 @@ class UFloat(NumericBase):
         else:
             self._uncertainty: UCombo = uncertainty
 
+        self.tag = tag  # TODO: I do not think UFloat should have tag attribute.
+                        #   Maybe UAtom can, but I'm not sure why.
+
     @property
     def value(self: Self) -> float:
         return self._value
@@ -130,7 +133,8 @@ def ufloat(value: float, uncertainty: float, tag: Optional[str] = None) -> UFloa
 
 
 def ufloat_fromstr(ufloat_str: str, tag: Optional[str] = None):
-    (nom, std) = str_to_number_with_uncert(ufloat_str)
+    # TODO: Do we really want to strip here?
+    (nom, std) = str_to_number_with_uncert(ufloat_str.strip())
     return UFloat(nom, std, tag)
 
 
