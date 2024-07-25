@@ -7,11 +7,18 @@ from math import isnan
 import pytest
 
 from uncertainties import formatting
-from uncertainties import umath
-from uncertainties.new.covariance import covariance_matrix
+from uncertainties.new import (
+    UFloat,
+    ufloat,
+    ufloat_fromstr,
+    covariance_matrix,
+    to_ufloat_func,
+    to_ufloat_pos_func,
+)
 from uncertainties.new.func_conversion import numerical_partial_derivative
 from uncertainties.new.ucombo import UCombo
-from uncertainties.new.ufloat import UFloat, ufloat, ufloat_fromstr
+from uncertainties.new import umath
+
 from helpers import (
     power_special_cases,
     power_all_cases,
@@ -563,44 +570,45 @@ def test_basic_access_to_data():
 
     # Case of AffineScalarFunc objects:
     y = x + 0
-    assert type(y) == AffineScalarFunc
+    assert type(y) == UFloat
     assert y.nominal_value == 3.14
     assert y.std_dev == 0.01
 
     # Details on the sources of error:
     a = ufloat(-1, 0.001)
     y = 2 * x + 3 * x + 2 + a
-    error_sources = y.error_components()
+    error_sources = y.uncertainty.expanded_dict
     assert len(error_sources) == 2  # 'a' and 'x'
-    assert error_sources[x] == 0.05
-    assert error_sources[a] == 0.001
 
-    # Derivative values should be available:
-    assert y.derivatives[x] == 5
+    x_uatom = next(iter(x.uncertainty.expanded_dict))
+    a_uatom = next(iter(a.uncertainty.expanded_dict))
+    assert error_sources[x_uatom] == 0.05
+    assert error_sources[a_uatom] == 0.001
 
-    # Modification of the standard deviation of variables:
-    x.std_dev = 1
-    assert y.error_components()[x] == 5  # New error contribution!
+    # TODO: Now only one weight is recorded per UAtom. Derivative and std_dev aren't
+    #   tracked separately.
+    # # Derivative values should be available:
+    # assert y.derivatives[x] == 5
+
+    # TODO: Now UFloat is immutable, you can't change std_dev of an upstream variable
+    #   and have downstream variables change. I think this latter behavior is much more
+    #   desirable.
+    # # Modification of the standard deviation of variables:
+    # x.std_dev = 1
+    # assert y.error_components()[x] == 5  # New error contribution!
 
     # Calculated values with uncertainties should not have a settable
     # standard deviation:
     y = 2 * x
-    try:
+    with pytest.raises(AttributeError):
         y.std_dev = 1
-    except AttributeError:
-        pass
-    else:
-        raise Exception("std_dev should not be settable for calculated results")
 
     # Calculation of deviations in units of the standard deviations:
     assert 10 / x.std_dev == x.std_score(10 + x.nominal_value)
 
-    # "In units of the standard deviation" is not always meaningful:
-    x.std_dev = 0
-    try:
-        x.std_score(1)
-    except ValueError:
-        pass  # Normal behavior
+    # std_score returns nan for zero std_dev.
+    z = ufloat(3.14, 0.0, "z var")
+    assert isnan(z.std_score(1))
 
 
 def test_correlations():
@@ -624,12 +632,8 @@ def test_no_coercion():
     """
 
     x = ufloat(4, 1)
-    try:
+    with pytest.raises(TypeError):
         assert float(x) == 4
-    except TypeError:
-        pass
-    else:
-        raise Exception("Conversion to float() should fail with TypeError")
 
 
 def test_wrapped_func_no_args_no_kwargs():
@@ -642,17 +646,17 @@ def test_wrapped_func_no_args_no_kwargs():
 
     # Like f_auto_unc, but does not accept numbers with uncertainties:
     def f(x, y):
-        assert not isinstance(x, uncert_core.UFloat)
-        assert not isinstance(y, uncert_core.UFloat)
+        assert not isinstance(x, UFloat)
+        assert not isinstance(y, UFloat)
         return f_auto_unc(x, y)
 
-    x = uncert_core.ufloat(1, 0.1)
-    y = uncert_core.ufloat(10, 2)
+    x = ufloat(1, 0.1)
+    y = ufloat(10, 2)
 
     ### Automatic numerical derivatives:
 
     ## Fully automatic numerical derivatives:
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_pos_func()(f)
     assert ufloats_close(f_auto_unc(x, y), f_wrapped(x, y))
 
     # Call with keyword arguments:
@@ -660,7 +664,7 @@ def test_wrapped_func_no_args_no_kwargs():
 
     ## Automatic additional derivatives for non-defined derivatives,
     ## and explicit None derivative:
-    f_wrapped = uncert_core.wrap(f, [None])  # No derivative for y
+    f_wrapped = to_ufloat_pos_func((None,))(f)  # No derivative for y
     assert ufloats_close(f_auto_unc(x, y), f_wrapped(x, y))
 
     # Call with keyword arguments:
@@ -669,7 +673,7 @@ def test_wrapped_func_no_args_no_kwargs():
     ### Explicit derivatives:
 
     ## Fully defined derivatives:
-    f_wrapped = uncert_core.wrap(f, [lambda x, y: 2, lambda x, y: math.cos(y)])
+    f_wrapped = to_ufloat_pos_func((lambda x, y: 2.0, lambda x, y: math.cos(y)))(f, )
 
     assert ufloats_close(f_auto_unc(x, y), f_wrapped(x, y))
 
@@ -677,7 +681,7 @@ def test_wrapped_func_no_args_no_kwargs():
     assert ufloats_close(f_auto_unc(y=y, x=x), f_wrapped(y=y, x=x))
 
     ## Automatic additional derivatives for non-defined derivatives:
-    f_wrapped = uncert_core.wrap(f, [lambda x, y: 2])  # No derivative for y
+    f_wrapped = to_ufloat_pos_func((lambda x, y: 2,))(f)  # No derivative for y
     assert ufloats_close(f_auto_unc(x, y), f_wrapped(x, y))
 
     # Call with keyword arguments:
