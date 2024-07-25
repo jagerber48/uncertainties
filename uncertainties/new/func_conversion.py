@@ -140,6 +140,10 @@ class to_ufloat_func:
             new_ucombo = UCombo(())
             for label, arg in args_kwargs_list:
                 if isinstance(arg, UFloat):
+                    # TODO: We can hit a case here where if 0 appears in deriv_func_dict
+                    #   but the functions is actually called with a kwarg x then we will
+                    #   miss the opportunity to use the analytic derivative. This needs
+                    #   to be resolved.
                     if label in self.deriv_func_dict:
                         deriv_func = self.deriv_func_dict[label]
                         derivative = deriv_func(*float_args, **float_kwargs)
