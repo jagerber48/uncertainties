@@ -5,17 +5,22 @@ from functools import lru_cache
 from dataclasses import dataclass, field
 from math import sqrt
 from numbers import Real
-from typing import Dict, Tuple, TypeVar, Union
+from typing import Dict, Optional, Tuple, TypeVar, Union
 import uuid
 
 
 @dataclass(frozen=True)
 class UAtom:
     uuid: uuid.UUID = field(init=False, default_factory=uuid.uuid4)
+    tag: Optional[str] = None
 
     def __str__(self):
         uuid_abbrev = f"{str(self.uuid)[0:2]}..{str(self.uuid)[-3:-1]}"
-        return f"{self.__class__.__name__}({uuid_abbrev})"
+        if self.tag is not None:
+            label = f"{self.tag}, {uuid_abbrev}"
+        else:
+            label = uuid_abbrev
+        return f"{self.__class__.__name__}({label})"
 
 
 UComboDict = Dict[UAtom, float]
