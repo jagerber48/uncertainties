@@ -221,8 +221,32 @@ for bug reports, feature requests, or feedback.
 This software is released under the BSD license.
 """
 
-from .core import *  # noqa
-from .core import __all__  # noqa For a correct help(uncertainties)
+from uncertainties.ufloat import UFloat, ufloat, ufloat_fromstr, nominal_value, std_dev
+from uncertainties.covariance import (
+    covariance_matrix,
+    correlation_matrix,
+    correlated_values,
+    correlated_values_norm
+)
+from uncertainties.ops import add_arithmetic_ops, add_comparative_ops
+
+
+add_arithmetic_ops(UFloat)
+add_comparative_ops(UFloat)
+
+
+__all__ = [
+    "UFloat",
+    "ufloat",
+    "ufloat_fromstr",
+    "nominal_value",
+    "std_dev",
+    "covariance_matrix",
+    "correlation_matrix",
+    "correlated_values",
+    "correlated_values_norm",
+]
+
 
 from .version import __version__, __version_tuple__  # noqa
 
