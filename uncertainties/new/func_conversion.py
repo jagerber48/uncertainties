@@ -183,7 +183,7 @@ PositionalDerivFunc = Union[Callable[..., float], str]
 
 
 def deriv_func_dict_positional_helper(
-        deriv_funcs: Tuple[Optional[PositionalDerivFunc]],
+        deriv_funcs: Tuple[Optional[PositionalDerivFunc], ...],
         eval_locals=None,
 ):
     nargs = len(deriv_funcs)
@@ -194,6 +194,8 @@ def deriv_func_dict_positional_helper(
             pass
         elif isinstance(deriv_func, str):
             deriv_func = func_str_to_positional_func(deriv_func, nargs, eval_locals)
+        elif deriv_func is None:
+            continue
         else:
             raise ValueError(
                 f'Invalid deriv_func: {deriv_func}. Must be callable or a string.'
@@ -216,8 +218,10 @@ class to_ufloat_pos_func(to_ufloat_func):
     """
     def __init__(
             self,
-            deriv_funcs: Tuple[Optional[PositionalDerivFunc]],
+            deriv_funcs: Optional[Tuple[Optional[PositionalDerivFunc], ...]] = None,
             eval_locals: Optional[Dict[str, Any]] = None,
     ):
+        if deriv_funcs is None:
+            deriv_funcs = ()
         deriv_func_dict = deriv_func_dict_positional_helper(deriv_funcs, eval_locals)
         super().__init__(deriv_func_dict)
