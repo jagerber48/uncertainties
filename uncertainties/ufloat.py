@@ -40,6 +40,10 @@ class UFloat(NumericBase):
         self._value: float = float(value)
 
         if isinstance(uncertainty, Real):
+            if uncertainty < 0:
+                raise ValueError(
+                    f"uncertainty must be non-negative, not {uncertainty}."
+                                 )
             combo = UCombo(
                 (
                     (UAtom(), float(uncertainty)),
