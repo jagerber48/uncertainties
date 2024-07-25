@@ -10,6 +10,7 @@ from uncertainties import formatting
 from uncertainties import umath
 from uncertainties.new.covariance import covariance_matrix
 from uncertainties.new.func_conversion import numerical_partial_derivative
+from uncertainties.new.ucombo import UCombo
 from uncertainties.new.ufloat import UFloat, ufloat, ufloat_fromstr
 from helpers import (
     power_special_cases,
@@ -298,7 +299,23 @@ def test_copy():
 ## Classes for the pickling tests (put at the module level, so that
 ## they can be unpickled):
 
+# Subclass without slots:
+class NewUFloatDict(UFloat):
+    pass
 
+
+# Subclass with slots defined by a tuple:
+class NewUFloatSlotsTuple(UFloat):
+    __slots__ = ("new_attr",)
+
+
+# Subclass with slots defined by a string:
+class NewUfloatSlotsStr(UFloat):
+    __slots__ = "new_attr"
+
+
+# TODO: Again, I want to reverse the old paradigm that says copying creates new
+#   independent UAtoms.
 def test_pickling():
     "Standard pickle module integration."
 
@@ -308,18 +325,18 @@ def test_pickling():
 
     x_unpickled = pickle.loads(pickle.dumps(x))
 
-    assert x != x_unpickled  # Pickling creates copies
+    assert x == x_unpickled  # Pickling preserves equality
 
     ## Tests with correlations and AffineScalarFunc objects:
     f = 2 * x
-    assert isinstance(f, AffineScalarFunc)
+    assert isinstance(f, UFloat)
     (f_unpickled, x_unpickled2) = pickle.loads(pickle.dumps((f, x)))
     # Correlations must be preserved:
-    assert f_unpickled - x_unpickled2 - x_unpickled2 == 0
+    assert f_unpickled - x_unpickled2 - x_unpickled2 == ufloat(0, 0)
 
     ## Tests with subclasses:
 
-    for subclass in (NewVariable_dict, NewVariable_slots_tuple, NewVariable_slots_str):
+    for subclass in (NewUFloatDict, NewUFloatSlotsTuple, NewUfloatSlotsStr):
         x = subclass(3, 0.14)
 
         # Pickling test with possibly uninitialized slots:
@@ -341,18 +358,18 @@ def test_pickling():
     # http://stackoverflow.com/a/15139208/42973). As a consequence,
     # the pickling process must pickle the correct value (i.e., not
     # the value from __dict__):
-    x = NewVariable_dict(3, 0.14)
-    x._nominal_value = "in slots"
+    x = NewUFloatDict(3, 0.14)
+    x._value = "in slots"
     # Corner case: __dict__ key which is also a slot name (it is
     # shadowed by the corresponding slot, so this is very unusual,
     # though):
-    x.__dict__["_nominal_value"] = "in dict"
+    x.__dict__["_value"] = "in dict"
     # Additional __dict__ attribute:
     x.dict_attr = "dict attribute"
 
     x_unpickled = pickle.loads(pickle.dumps(x))
     # We make sure that the data is still there and untouched:
-    assert x_unpickled._nominal_value == "in slots"
+    assert x_unpickled._value == "in slots"
     assert x_unpickled.__dict__ == x.__dict__
 
     ##
@@ -363,8 +380,8 @@ def test_pickling():
     # attribute is empty, __getstate__()'s result could be false, and
     # so __setstate__() would not be called and the original empty
     # linear combination would not be set in linear_combo.
-    x = uncert_core.LinearCombination({})
-    assert pickle.loads(pickle.dumps(x)).linear_combo == {}
+    x = UCombo(())
+    assert pickle.loads(pickle.dumps(x)).ucombo_tuple == ()
 
 
 def test_int_div():
