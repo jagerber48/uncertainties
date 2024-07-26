@@ -756,22 +756,22 @@ def test_wrapped_func_no_args_kwargs():
     # Like f_auto_unc, but does not accept numbers with uncertainties:
     def f(x, y, **kwargs):
         assert not any(
-            isinstance(value, uncert_core.UFloat)
+            isinstance(value, UFloat)
             for value in [x, y] + list(kwargs.values())
         )
         return f_auto_unc(x, y, **kwargs)
 
-    x = uncert_core.ufloat(1, 0.1)
-    y = uncert_core.ufloat(10, 2)
+    x = ufloat(1, 0.1)
+    y = ufloat(10, 2)
     s = "string arg"
-    z = uncert_core.ufloat(100, 3)
+    z = ufloat(100, 3)
 
     kwargs = {"s": s, "z": z}  # Arguments not in signature
 
     ### Automatic numerical derivatives:
 
     ## Fully automatic numerical derivatives:
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_pos_func()(f)
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
 
     # Call with keyword arguments:
@@ -782,7 +782,7 @@ def test_wrapped_func_no_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, no
     # derivative for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None])
+    f_wrapped = to_ufloat_pos_func((None,))(f)
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
 
     # Call with keyword arguments:
@@ -790,7 +790,7 @@ def test_wrapped_func_no_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, no
     # derivative for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None], {"z": None})
+    f_wrapped = to_ufloat_pos_func((None,))(f)
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
 
     # Call with keyword arguments:
@@ -798,7 +798,7 @@ def test_wrapped_func_no_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, derivative
     # for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None], {"z": lambda x, y, **kwargs: 3})
+    f_wrapped = to_ufloat_func({"z": lambda x, y, **kwargs: 3})(f)
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
 
     # Call with keyword arguments:
@@ -807,11 +807,12 @@ def test_wrapped_func_no_args_kwargs():
     ### Explicit derivatives:
 
     ## Fully defined derivatives:
-    f_wrapped = uncert_core.wrap(
-        f,
-        [lambda x, y, **kwargs: 2, lambda x, y, **kwargs: math.cos(y)],
-        {"z:": lambda x, y, **kwargs: 3},
-    )
+    f_wrapped = to_ufloat_func(
+        {
+            0: lambda x, y, **kwargs: 2,
+            1: lambda x, y, **kwargs: math.cos(y),
+            "z": lambda x, y, **kwargs: 3
+        })(f)
 
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
     # Call with keyword arguments:
@@ -820,7 +821,7 @@ def test_wrapped_func_no_args_kwargs():
     ## Automatic additional derivatives for non-defined derivatives:
 
     # No derivative for y or z:
-    f_wrapped = uncert_core.wrap(f, [lambda x, y, **kwargs: 2])
+    f_wrapped = to_ufloat_func({0: lambda x, y, **kwargs: 2})(f)
     assert ufloats_close(f_auto_unc(x, y, **kwargs), f_wrapped(x, y, **kwargs))
 
     # Call with keyword arguments:
