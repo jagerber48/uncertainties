@@ -23,7 +23,7 @@ def main():
             for _ in range(num_reps)
         ],
         "positive": [
-            [random.uniform(0, 100), random.uniform(-100, +100)]
+            [random.uniform(0, 100), random.uniform(0, +100)]
             for _ in range(num_reps)
         ],
     }

@@ -20,11 +20,15 @@ from helpers import (
 # Unit tests
 
 
-input_data_path = Path(Path(__file__).parent, "data", "inputs.json")
-with open(input_data_path, "r") as f:
-    input_dict = json.load(f)
+single_input_data_path = Path(Path(__file__).parent, "data", "single_inputs.json")
+with open(single_input_data_path, "r") as f:
+    single_input_dict = json.load(f)
 
-real_input_funcs = (
+double_input_data_path = Path(Path(__file__).parent, "data", "double_inputs.json")
+with open(double_input_data_path, "r") as f:
+    double_input_dict = json.load(f)
+
+real_single_input_funcs = (
     "asinh",
     "atan",
     "cos",
@@ -39,28 +43,41 @@ real_input_funcs = (
     "tan",
     "tanh",
 )
-positive_input_funcs = (
+positive_single_input_funcs = (
     "log",
     "log10",
     "sqrt",
 )
-minus_one_to_plus_one_funcs = (
+minus_one_to_plus_one_single_input_funcs = (
     "acos",
     "asin",
     "atanh",
 )
-greater_than_one_funcs = ("acosh",)
+greater_than_one_single_input_funcs = ("acosh",)
 
-real_cases = list(itertools.product(real_input_funcs, input_dict["real"]))
-positive_cases = list(itertools.product(positive_input_funcs, input_dict["positive"]))
-minus_one_to_plus_one_cases = list(
-    itertools.product(minus_one_to_plus_one_funcs, input_dict["minus_one_to_plus_one"])
+real_single_input_cases = list(
+    itertools.product(real_single_input_funcs, single_input_dict["real"])
 )
-greater_than_one_cases = list(
-    itertools.product(greater_than_one_funcs, input_dict["greater_than_one"])
+positive_single_input_cases = list(
+    itertools.product(positive_single_input_funcs, single_input_dict["positive"])
+)
+minus_one_to_plus_one_single_input_cases = list(
+    itertools.product(
+        minus_one_to_plus_one_single_input_funcs,
+        single_input_dict["minus_one_to_plus_one"],
+    )
+)
+greater_than_one_single_input_cases = list(
+    itertools.product(
+        greater_than_one_single_input_funcs,
+        single_input_dict["greater_than_one"],
+    )
 )
 single_input_cases = (
-    real_cases + positive_cases + minus_one_to_plus_one_cases + greater_than_one_cases
+    real_single_input_cases
+    + positive_single_input_cases
+    + minus_one_to_plus_one_single_input_cases
+    + greater_than_one_single_input_cases
 )
 
 
@@ -86,26 +103,68 @@ def test_single_input_func_derivatives(func, value):
     )
 
 
-double_input_funcs = (
+real_double_input_funcs = (
     "atan2",
+)
+
+positive_double_input_funcs = (
     "hypot",
-    "log"
-)
-
-
-single_input_positive_list = (
     "log",
-    "log10",
-    "sqrt",
 )
 
-single_input_m1_to_p1_list = (
-    "acos",
-    "asin",
-    "atanh",
+real_double_input_cases = list(
+    itertools.product(real_double_input_funcs, *zip(*double_input_dict["real"]))
+)
+print(real_double_input_cases)
+positive_double_input_cases = list(
+    itertools.product(positive_double_input_funcs, *zip(*double_input_dict["positive"]))
 )
 
-single_input_greater_than_one = ("acosh",)
+double_input_cases = (
+    real_double_input_cases + positive_double_input_cases
+)
+
+@pytest.mark.parametrize("func, value_0, value_1", double_input_cases)
+def test_double_input_func_derivatives(func, value_0, value_1):
+    uval_0 = ufloat(value_0, 1.0)
+    uval_1 = ufloat(value_1, 1.0)
+
+    uatom_0, _ = get_single_uatom_and_weight(uval_0)
+    uatom_1, _ = get_single_uatom_and_weight(uval_1)
+
+    math_func = getattr(math, func)
+    umath_func = getattr(umath, func)
+
+    func_uval = umath_func(uval_0, uval_1)
+
+    umath_deriv_0 = func_uval.error_components[uatom_0]
+    umath_deriv_1 = func_uval.error_components[uatom_1]
+    numerical_deriv_0 = numerical_partial_derivative(
+        math_func,
+        0,
+        value_0,
+        value_1,
+    )
+    numerical_deriv_1 = numerical_partial_derivative(
+        math_func,
+        1,
+        value_0,
+        value_1,
+    )
+
+    assert numbers_close(
+        umath_deriv_0,
+        numerical_deriv_0,
+        fractional=True,
+        tolerance=1e-4,
+    )
+    assert numbers_close(
+        umath_deriv_1,
+        numerical_deriv_1,
+        fractional=True,
+        tolerance=1e-4,
+    )
+
 
 
 def test_fixed_derivatives_math_funcs():
