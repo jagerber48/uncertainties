@@ -1,9 +1,12 @@
+import itertools
+import json
 import math
-from math import isnan
+from pathlib import Path
 
-from uncertainties import ufloat
-import uncertainties.core as uncert_core
-import uncertainties.umath_core as umath_core
+import pytest
+
+from uncertainties.new import ufloat, umath
+from uncertainties.new.func_conversion import numerical_partial_derivative
 
 from helpers import (
     power_special_cases,
@@ -11,9 +14,91 @@ from helpers import (
     power_wrt_ref,
     compare_derivatives,
     numbers_close,
+    get_single_uatom_and_weight,
 )
 ###############################################################################
 # Unit tests
+
+
+input_data_path = Path(Path(__file__).parent, "data", "inputs.json")
+with open(input_data_path, "r") as f:
+    input_dict = json.load(f)
+
+real_input_funcs = (
+    "asinh",
+    "atan",
+    "cos",
+    "cosh",
+    "degrees",
+    "erf",
+    "erfc",
+    "exp",
+    "radians",
+    "sin",
+    "sinh",
+    "tan",
+    "tanh",
+)
+positive_input_funcs = (
+    "log",
+    "log10",
+    "sqrt",
+)
+minus_one_to_plus_one_funcs = (
+    "acos",
+    "asin",
+    "atanh",
+)
+greater_than_one_funcs = ("acosh",)
+
+real_cases = list(itertools.product(real_input_funcs, input_dict["real"]))
+positive_cases = list(itertools.product(positive_input_funcs, input_dict["positive"]))
+minus_one_to_plus_one_cases = list(
+    itertools.product(minus_one_to_plus_one_funcs, input_dict["minus_one_to_plus_one"])
+)
+greater_than_one_cases = list(
+    itertools.product(greater_than_one_funcs, input_dict["greater_than_one"])
+)
+single_input_cases = (
+    real_cases + positive_cases + minus_one_to_plus_one_cases + greater_than_one_cases
+)
+
+
+@pytest.mark.parametrize("func, value", single_input_cases)
+def test_single_input_func_derivatives(func, value):
+    uval = ufloat(value, 1.0)
+
+    math_func = getattr(math, func)
+    umath_func = getattr(umath, func)
+
+    _, umath_deriv = get_single_uatom_and_weight(umath_func(uval))
+    numerical_deriv = numerical_partial_derivative(
+        math_func,
+        0,
+        value,
+    )
+
+    assert numbers_close(
+        umath_deriv,
+        numerical_deriv,
+        fractional=True,
+        tolerance=1e-4,
+    )
+
+
+single_input_positive_list = (
+    "log",
+    "log10",
+    "sqrt",
+)
+
+single_input_m1_to_p1_list = (
+    "acos",
+    "asin",
+    "atanh",
+)
+
+single_input_greater_than_one = ("acosh",)
 
 
 def test_fixed_derivatives_math_funcs():

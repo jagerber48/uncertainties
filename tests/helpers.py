@@ -1,8 +1,18 @@
 import random
 from math import isnan, isinf
 
+from uncertainties.new import UFloat
 import uncertainties.core as uncert_core
 from uncertainties.core import ufloat, AffineScalarFunc
+
+
+def get_single_uatom_and_weight(uval: UFloat):
+    error_components = uval.error_components
+    if len(error_components) != 1:
+        raise ValueError("uval does not have exactly 1 UAtom.")
+    uatom = next(iter(error_components))
+    weight = error_components[uatom]
+    return uatom, weight
 
 
 def power_all_cases(op):
