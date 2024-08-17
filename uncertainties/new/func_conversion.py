@@ -27,7 +27,7 @@ def inject_to_args_kwargs(param, injected_arg, *args, **kwargs):
         new_kwargs = kwargs
         new_kwargs[param] = injected_arg
     else:
-        raise TypeError(f'{param} must be an int or str, not {type(param)}.')
+        raise TypeError(f"{param} must be an int or str, not {type(param)}.")
     return new_args, new_kwargs
 
 
@@ -35,10 +35,7 @@ SQRT_EPS = sqrt(sys.float_info.epsilon)
 
 
 def numerical_partial_derivative(
-        f: Callable[..., float],
-        target_param: Union[str, int],
-        *args,
-        **kwargs
+    f: Callable[..., float], target_param: Union[str, int], *args, **kwargs
 ) -> float:
     """
     Numerically calculate the partial derivative of a function f with respect to the
@@ -53,13 +50,13 @@ def numerical_partial_derivative(
 
     lower_args, lower_kwargs = inject_to_args_kwargs(
         target_param,
-        x-dx,
+        x - dx,
         *args,
         **kwargs,
     )
     upper_args, upper_kwargs = inject_to_args_kwargs(
         target_param,
-        x+dx,
+        x + dx,
         *args,
         **kwargs,
     )
@@ -100,11 +97,11 @@ class to_ufloat_func:
       into a parameter which is not specified in deriv_func_dict then the partial
       derivative will be evaluated numerically.
     """
-    def __init__(
-            self,
-            deriv_func_dict: DerivFuncDict = None,
-    ):
 
+    def __init__(
+        self,
+        deriv_func_dict: DerivFuncDict = None,
+    ):
         if deriv_func_dict is None:
             deriv_func_dict = {}
         self.deriv_func_dict: DerivFuncDict = deriv_func_dict
@@ -144,7 +141,10 @@ class to_ufloat_func:
                     #   but the functions is actually called with a kwarg x then we will
                     #   miss the opportunity to use the analytic derivative. This needs
                     #   to be resolved.
-                    if label in self.deriv_func_dict:
+                    if (
+                        label in self.deriv_func_dict
+                        and self.deriv_func_dict[label] is not None
+                    ):
                         deriv_func = self.deriv_func_dict[label]
                         derivative = deriv_func(*float_args, **float_kwargs)
                     else:
@@ -166,16 +166,18 @@ def func_str_to_positional_func(func_str, nargs, eval_locals=None):
     if eval_locals is None:
         eval_locals = {}
     if nargs == 1:
+
         def pos_func(x):
-            eval_locals['x'] = x
+            eval_locals["x"] = x
             return eval(func_str, None, eval_locals)
     elif nargs == 2:
+
         def pos_func(x, y):
-            eval_locals['x'] = x
-            eval_locals['y'] = y
+            eval_locals["x"] = x
+            eval_locals["y"] = y
             return eval(func_str, None, eval_locals)
     else:
-        raise ValueError(f'Only nargs=1 or nargs=2 is supported, not {nargs=}.')
+        raise ValueError(f"Only nargs=1 or nargs=2 is supported, not {nargs=}.")
     return pos_func
 
 
@@ -183,8 +185,8 @@ PositionalDerivFunc = Union[Callable[..., float], str]
 
 
 def deriv_func_dict_positional_helper(
-        deriv_funcs: Tuple[Optional[PositionalDerivFunc], ...],
-        eval_locals=None,
+    deriv_funcs: Tuple[Optional[PositionalDerivFunc], ...],
+    eval_locals=None,
 ):
     nargs = len(deriv_funcs)
     deriv_func_dict = {}
@@ -198,7 +200,7 @@ def deriv_func_dict_positional_helper(
             continue
         else:
             raise ValueError(
-                f'Invalid deriv_func: {deriv_func}. Must be callable or a string.'
+                f"Invalid deriv_func: {deriv_func}. Must be callable or a string."
             )
         deriv_func_dict[arg_num] = deriv_func
     return deriv_func_dict
@@ -216,10 +218,11 @@ class to_ufloat_pos_func(to_ufloat_func):
       'x', 'y', '1/y', '-x/y**2' etc. Unary functions should use 'x' as the parameter
       and binary functions should use 'x' and 'y' as the two parameters respectively.
     """
+
     def __init__(
-            self,
-            deriv_funcs: Optional[Tuple[Optional[PositionalDerivFunc], ...]] = None,
-            eval_locals: Optional[Dict[str, Any]] = None,
+        self,
+        deriv_funcs: Optional[Tuple[Optional[PositionalDerivFunc], ...]] = None,
+        eval_locals: Optional[Dict[str, Any]] = None,
     ):
         if deriv_funcs is None:
             deriv_funcs = ()

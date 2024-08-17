@@ -1010,11 +1010,11 @@ def test_wrap_with_kwargs():
         # uncertainty:
 
         for value in [x, y] + list(args) + list(kwargs.values()):
-            assert not isinstance(value, uncert_core.UFloat)
+            assert not isinstance(value, UFloat)
 
         return f_auto_unc(x, y, *args, **kwargs)
 
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_func()(f)
 
     x = ufloat(1, 0.1)
     y = ufloat(10, 0.11)
@@ -1031,38 +1031,33 @@ def test_wrap_with_kwargs():
     # also test the automatic handling of additional *args arguments
     # beyond the number of supplied derivatives.
 
-    f_wrapped2 = uncert_core.wrap(f, [None, lambda x, y, *args, **kwargs: math.cos(y)])
+    f_wrapped2 = to_ufloat_pos_func([None, lambda x, y, *args, **kwargs: math.cos(y)])(
+        f
+    )
 
     # The derivatives must be perfectly identical:
 
     # The *args parameter of f() is given as a keyword argument, so as
     # to try to confuse the code:
 
-    assert (
-        f_wrapped2(x, y, z, t=t).derivatives[y]
-        == f_auto_unc(x, y, z, t=t).derivatives[y]
-    )
+    assert f_wrapped2(x, y, z, t=t) == f_auto_unc(x, y, z, t=t)
 
     # Derivatives supplied through the keyword-parameter dictionary of
     # derivatives, and also derivatives supplied for the
     # var-positional arguments (*args[0]):
-
-    f_wrapped3 = uncert_core.wrap(
-        f,
-        [None, None, lambda x, y, *args, **kwargs: 2],
-        {"t": lambda x, y, *args, **kwargs: 3},
-    )
+    f_wrapped3 = to_ufloat_func(
+        deriv_func_dict={
+            0: None,
+            1: None,
+            2: lambda x, y, *args, **kwargs: 2,
+            "t": lambda x, y, *args, **kwrags: 3,
+        }
+    )(f)
 
     # The derivatives should be exactly the same, because they are
     # obtained with the exact same analytic formula:
-    assert (
-        f_wrapped3(x, y, z, t=t).derivatives[z]
-        == f_auto_unc(x, y, z, t=t).derivatives[z]
-    )
-    assert (
-        f_wrapped3(x, y, z, t=t).derivatives[t]
-        == f_auto_unc(x, y, z, t=t).derivatives[t]
-    )
+    assert f_wrapped3(x, y, z, t=t) == f_auto_unc(x, y, z, t=t)
+    assert f_wrapped3(x, y, z, t=t) == f_auto_unc(x, y, z, t=t)
 
     ########################################
     # Making sure that user-supplied derivatives are indeed called:
@@ -1077,7 +1072,13 @@ def test_wrap_with_kwargs():
     def failing_func(x, y, *args, **kwargs):
         raise FunctionCalled
 
-    f_wrapped4 = uncert_core.wrap(f, [None, failing_func], {"t": failing_func})
+    f_wrapped4 = to_ufloat_func(
+        deriv_func_dict={
+            0: None,
+            1: failing_func,
+            "t": failing_func,
+        }
+    )(f)
 
     try:
         f_wrapped4(x, 3.14, z, t=t)
@@ -1403,9 +1404,7 @@ else:
 
         nominal_values = [v.nominal_value for v in (x, y, z)]
         std_devs = [v.std_dev for v in (x, y, z)]
-        x2, y2, z2 = correlated_values_norm(
-            nominal_values, std_devs, corr_mat
-        )
+        x2, y2, z2 = correlated_values_norm(nominal_values, std_devs, corr_mat)
 
         # uarrays_close() is used instead of numbers_close() because
         # it compares uncertainties too:
