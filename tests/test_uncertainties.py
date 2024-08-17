@@ -706,48 +706,45 @@ def test_wrapped_func_args_no_kwargs():
 
     # Like f_auto_unc, but does not accept numbers with uncertainties:
     def f(x, y, *args):
-        assert not any(
-            isinstance(value, uncert_core.UFloat) for value in [x, y] + list(args)
-        )
+        assert not any(isinstance(value, UFloat) for value in [x, y] + list(args))
         return f_auto_unc(x, y, *args)
 
-    x = uncert_core.ufloat(1, 0.1)
-    y = uncert_core.ufloat(10, 2)
+    x = ufloat(1, 0.1)
+    y = ufloat(10, 2)
     s = "string arg"
-    z = uncert_core.ufloat(100, 3)
+    z = ufloat(100, 3)
 
     args = [s, z, s]  # var-positional parameters
 
     ### Automatic numerical derivatives:
 
     ## Fully automatic numerical derivatives:
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_func()(f)
     assert ufloats_close(f_auto_unc(x, y, *args), f_wrapped(x, y, *args))
 
     ## Automatic additional derivatives for non-defined derivatives,
     ## and explicit None derivative:
-    f_wrapped = uncert_core.wrap(f, [None])  # No derivative for y
+    f_wrapped = to_ufloat_pos_func((None,))(f)  # No derivative for y
     assert ufloats_close(f_auto_unc(x, y, *args), f_wrapped(x, y, *args))
 
     ### Explicit derivatives:
 
     ## Fully defined derivatives:
-    f_wrapped = uncert_core.wrap(
-        f,
-        [
+    f_wrapped = to_ufloat_pos_func(
+        (
             lambda x, y, *args: 2,
             lambda x, y, *args: math.cos(y),
             None,
             lambda x, y, *args: 3,
-        ],
-    )
+        ),
+    )(f)
 
     assert ufloats_close(f_auto_unc(x, y, *args), f_wrapped(x, y, *args))
 
     ## Automatic additional derivatives for non-defined derivatives:
 
     # No derivative for y:
-    f_wrapped = uncert_core.wrap(f, [lambda x, y, *args: 2])
+    f_wrapped = to_ufloat_pos_func((lambda x, y, *args: 2,))(f)
     assert ufloats_close(f_auto_unc(x, y, *args), f_wrapped(x, y, *args))
 
 
@@ -847,16 +844,16 @@ def test_wrapped_func_args_kwargs():
     # Like f_auto_unc, but does not accept numbers with uncertainties:
     def f(x, y, *args, **kwargs):
         assert not any(
-            isinstance(value, uncert_core.UFloat)
+            isinstance(value, UFloat)
             for value in [x, y] + list(args) + list(kwargs.values())
         )
         return f_auto_unc(x, y, *args, **kwargs)
 
-    x = uncert_core.ufloat(1, 0.1)
-    y = uncert_core.ufloat(10, 2)
-    t = uncert_core.ufloat(1000, 4)
+    x = ufloat(1, 0.1)
+    y = ufloat(10, 2)
+    t = ufloat(1000, 4)
     s = "string arg"
-    z = uncert_core.ufloat(100, 3)
+    z = ufloat(100, 3)
 
     args = [s, t, s]
     kwargs = {"u": s, "z": z}  # Arguments not in signature
@@ -864,7 +861,7 @@ def test_wrapped_func_args_kwargs():
     ### Automatic numerical derivatives:
 
     ## Fully automatic numerical derivatives:
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_func()(f)
 
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
@@ -877,7 +874,9 @@ def test_wrapped_func_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, no
     # derivative for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None, None, None, lambda x, y, *args, **kwargs: 4])
+    f_wrapped = to_ufloat_pos_func((None, None, None, lambda x, y, *args, **kwargs: 4))(
+        f
+    )
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
         f_wrapped(x, y, *args, **kwargs),
@@ -886,7 +885,12 @@ def test_wrapped_func_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, no
     # derivative for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None], {"z": None})
+    f_wrapped = to_ufloat_func(
+        deriv_func_dict={
+            0: None,
+            "z": None,
+        },
+    )(f)
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
         f_wrapped(x, y, *args, **kwargs),
@@ -895,7 +899,12 @@ def test_wrapped_func_args_kwargs():
 
     # No derivative for positional-or-keyword parameter y, derivative
     # for optional-keyword parameter z:
-    f_wrapped = uncert_core.wrap(f, [None], {"z": lambda x, y, *args, **kwargs: 3})
+    f_wrapped = to_ufloat_func(
+        deriv_func_dict={
+            0: None,
+            "z": lambda x, y, *args, **kwargs: 3,
+        }
+    )(f)
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
         f_wrapped(x, y, *args, **kwargs),
@@ -905,11 +914,13 @@ def test_wrapped_func_args_kwargs():
     ### Explicit derivatives:
 
     ## Fully defined derivatives:
-    f_wrapped = uncert_core.wrap(
-        f,
-        [lambda x, y, *args, **kwargs: 2, lambda x, y, *args, **kwargs: math.cos(y)],
-        {"z:": lambda x, y, *args, **kwargs: 3},
-    )
+    f_wrapped = to_ufloat_func(
+        deriv_func_dict={
+            0: lambda x, y, *args, **kwargs: 2,
+            1: lambda x, y, *args, **kwargs: math.cos(y),
+            "z": lambda x, y, *args, **kwargs: 3,
+        }
+    )(f)
 
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
@@ -920,7 +931,11 @@ def test_wrapped_func_args_kwargs():
     ## Automatic additional derivatives for non-defined derivatives:
 
     # No derivative for y or z:
-    f_wrapped = uncert_core.wrap(f, [lambda x, y, *args, **kwargs: 2])
+    f_wrapped = to_ufloat_func(
+        deriv_func_dict={
+            0: lambda x, y, *args, **kwargs: 2,
+        }
+    )(f)
     assert ufloats_close(
         f_auto_unc(x, y, *args, **kwargs),
         f_wrapped(x, y, *args, **kwargs),
@@ -943,11 +958,11 @@ def test_wrapped_func():
     def f(angle, *list_var):
         # We make sure that this function is only ever called with
         # numbers with no uncertainty (since it is wrapped):
-        assert not isinstance(angle, uncert_core.UFloat)
-        assert not any(isinstance(arg, uncert_core.UFloat) for arg in list_var)
+        assert not isinstance(angle, UFloat)
+        assert not any(isinstance(arg, UFloat) for arg in list_var)
         return f_auto_unc(angle, *list_var)
 
-    f_wrapped = uncert_core.wrap(f)
+    f_wrapped = to_ufloat_func()(f)
 
     my_list = [1, 2, 3]
 
@@ -961,8 +976,8 @@ def test_wrapped_func():
     ########################################
     # Call with uncertainties:
 
-    angle = uncert_core.ufloat(1, 0.1)
-    list_value = uncert_core.ufloat(3, 0.2)
+    angle = ufloat(1, 0.1)
+    list_value = ufloat(3, 0.2)
 
     # The random variables must be the same (full correlation):
 
@@ -977,13 +992,18 @@ def test_wrapped_func():
     def f(x, y, z, t, u):
         return x + 2 * z + 3 * t + 4 * u
 
-    f_wrapped = uncert_core.wrap(
-        f, [lambda *args: 1, None, lambda *args: 2, None]
-    )  # No deriv. for u
+    f_wrapped = to_ufloat_func(
+        deriv_func_dict={
+            0: lambda *args: 1,
+            1: None,
+            2: lambda *args: 2,
+            3: None,
+        }
+    )(f)  # No deriv. for u
 
     assert f_wrapped(10, "string argument", 1, 0, 0) == 12
 
-    x = uncert_core.ufloat(10, 1)
+    x = ufloat(10, 1)
 
     assert numbers_close(
         f_wrapped(x, "string argument", x, x, x).std_dev, (1 + 2 + 3 + 4) * x.std_dev
@@ -1164,31 +1184,17 @@ def test_power_special_cases():
 
     # http://stackoverflow.com/questions/10282674/difference-between-the-built-in-pow-and-math-pow-for-floats-in-python
 
-    try:
+    with pytest.raises(ZeroDivisionError):
         pow(ufloat(0, 0), negative)
-    except ZeroDivisionError:
-        pass
-    else:
-        raise Exception("A proper exception should have been raised")
 
-    try:
+    with pytest.raises(ZeroDivisionError):
         pow(ufloat(0, 0.1), negative)
-    except ZeroDivisionError:
-        pass
-    else:
-        raise Exception("A proper exception should have been raised")
 
-    try:
+    with pytest.raises(TypeError):
+        """
+        Results in complex output and derivatives which can't get cast to float.
+        """
         result = pow(negative, positive)  # noqa
-    except ValueError:
-        # The reason why it should also fail in Python 3 is that the
-        # result of Python 3 is a complex number, which uncertainties
-        # does not handle (no uncertainties on complex numbers). In
-        # Python 2, this should always fail, since Python 2 does not
-        # know how to calculate it.
-        pass
-    else:
-        raise Exception("A proper exception should have been raised")
 
 
 def test_power_wrt_ref():

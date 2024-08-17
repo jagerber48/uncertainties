@@ -77,7 +77,7 @@ def get_args_kwargs_list(*args, **kwargs):
     return args_kwargs_list
 
 
-DerivFuncDict = Optional[Dict[Union[str, int], Callable[..., float]]]
+DerivFuncDict = Optional[Dict[Union[str, int], Optional[Callable[..., float]]]]
 
 
 class to_ufloat_func:
