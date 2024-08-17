@@ -1,5 +1,5 @@
 import random
-from math import isnan
+from math import isnan, isinf
 
 import uncertainties.core as uncert_core
 from uncertainties.core import ufloat, AffineScalarFunc
@@ -163,7 +163,7 @@ def power_wrt_ref(op, ref_op):
 # Utilities for unit testing
 
 
-def numbers_close(x, y, tolerance=1e-6):
+def numbers_close(x, y, tolerance=1e-6, fractional=False):
     """
     Returns True if the given floats are close enough.
 
@@ -179,10 +179,17 @@ def numbers_close(x, y, tolerance=1e-6):
     # NaN could appear silently:
     if isnan(x):
         return isnan(y)
-    elif isnan(y):
-        return isnan(x)
+    elif isinf(x):
+        return isinf(y) and (y > 0) is (x > 0)
+    elif x == 0:
+        return abs(y) < tolerance
+    elif y == 0:
+        return abs(x) < tolerance
     else:
-        return x - y < tolerance
+        diff = abs(x - y)
+        if fractional:
+            diff = 2 * diff / (abs(x + y))
+        return diff < tolerance
 
 
 def ufloats_close(x, y, tolerance=1e-6):

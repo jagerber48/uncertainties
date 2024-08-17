@@ -70,7 +70,7 @@ class UFloat(NumericBase):
 
     def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
-            return False
+            return NotImplemented
         return self.n == other.n and self.u == other.u
 
     def __format__(self: Self, format_spec: str = "") -> str:

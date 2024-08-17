@@ -82,7 +82,7 @@ def correlated_values_norm(nominal_values, std_devs, correlation_matrix):
         cov_mat = correlation_matrix * outer_std_devs
     else:
         n = len(correlation_matrix)
-        cov_mat = [[float("nan")] * n] * n
+        cov_mat = [[0.0] * n] * n
         for i in range(n):
             for j in range(n):
                 cov_mat[i][i] = cov_mat[i][j] * np.sqrt(cov_mat[i][i] * cov_mat[j][j])

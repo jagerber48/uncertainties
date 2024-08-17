@@ -10,10 +10,11 @@ from uncertainties.new import (
     ufloat,
     ufloat_fromstr,
     covariance_matrix,
+    correlated_values,
+    correlated_values_norm,
     to_ufloat_func,
     to_ufloat_pos_func,
     std_dev,
-    correlated_values,
 )
 from uncertainties.new.func_conversion import numerical_partial_derivative
 from uncertainties.new.ucombo import UCombo
@@ -1127,7 +1128,7 @@ def test_covariances():
     x = ufloat(1, 0.1)
     y = -2 * x + 10
     z = -3 * x
-    covs = uncert_core.covariance_matrix([x, y, z])
+    covs = covariance_matrix([x, y, z])
     # Diagonal elements are simple:
     assert numbers_close(covs[0][0], 0.01)
     assert numbers_close(covs[1][1], 0.04)
@@ -1235,18 +1236,27 @@ else:
         assert numpy.all(x == numpy.array([x, x, x]))
 
         # Inequalities:
-        assert len(x < numpy.arange(10)) == 10
-        assert len(numpy.arange(10) > x) == 10
-        assert len(x <= numpy.arange(10)) == 10
-        assert len(numpy.arange(10) >= x) == 10
-        assert len(x > numpy.arange(10)) == 10
-        assert len(numpy.arange(10) < x) == 10
-        assert len(x >= numpy.arange(10)) == 10
-        assert len(numpy.arange(10) <= x) == 10
+        with pytest.raises(TypeError):
+            assert len(x < numpy.arange(10)) == 10
+        with pytest.raises(TypeError):
+            assert len(numpy.arange(10) > x) == 10
+        with pytest.raises(TypeError):
+            assert len(x <= numpy.arange(10)) == 10
+        with pytest.raises(TypeError):
+            assert len(numpy.arange(10) >= x) == 10
+        with pytest.raises(TypeError):
+            assert len(x > numpy.arange(10)) == 10
+        with pytest.raises(TypeError):
+            assert len(numpy.arange(10) < x) == 10
+        with pytest.raises(TypeError):
+            assert len(x >= numpy.arange(10)) == 10
+        with pytest.raises(TypeError):
+            assert len(numpy.arange(10) <= x) == 10
 
         # More detailed test, that shows that the comparisons are
         # meaningful (x >= 0, but not x <= 1):
-        assert numpy.all((x >= numpy.arange(3)) == [True, False, False])
+        with pytest.raises(TypeError):
+            assert numpy.all((x >= numpy.arange(3)) == [True, False, False])
 
     def test_correlated_values():
         """
@@ -1377,7 +1387,7 @@ else:
         y = ufloat(2, 0.3)
         z = -3 * x + y
 
-        cov_mat = uncert_core.covariance_matrix([x, y, z])
+        cov_mat = covariance_matrix([x, y, z])
 
         std_devs = numpy.sqrt(numpy.array(cov_mat).diagonal())
 
@@ -1393,23 +1403,23 @@ else:
 
         nominal_values = [v.nominal_value for v in (x, y, z)]
         std_devs = [v.std_dev for v in (x, y, z)]
-        x2, y2, z2 = uncert_core.correlated_values_norm(
-            list(zip(nominal_values, std_devs)), corr_mat
+        x2, y2, z2 = correlated_values_norm(
+            nominal_values, std_devs, corr_mat
         )
 
         # uarrays_close() is used instead of numbers_close() because
         # it compares uncertainties too:
 
         # Test of individual variables:
-        assert uarrays_close(numpy.array([x]), numpy.array([x2]))
-        assert uarrays_close(numpy.array([y]), numpy.array([y2]))
-        assert uarrays_close(numpy.array([z]), numpy.array([z2]))
+        for first, second in ((x, x2), (y, y2), (z, z2)):
+            assert numbers_close(first.n, second.n)
+            assert numbers_close(first.s, second.s)
 
         # Partial correlation test:
         assert uarrays_close(numpy.array([0]), numpy.array([z2 - (-3 * x2 + y2)]))
 
         # Test of the full covariance matrix:
-        assert uarrays_close(
+        assert np.allclose(
             numpy.array(cov_mat),
-            numpy.array(uncert_core.covariance_matrix([x2, y2, z2])),
+            numpy.array(covariance_matrix([x2, y2, z2])),
         )
