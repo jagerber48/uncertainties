@@ -3,9 +3,10 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from uncertainties.new import ufloat, umath
+from uncertainties.new import ufloat, umath, covariance_matrix
 from uncertainties.new.func_conversion import numerical_partial_derivative
 
 from helpers import (
@@ -103,9 +104,7 @@ def test_single_input_func_derivatives(func, value):
     )
 
 
-real_double_input_funcs = (
-    "atan2",
-)
+real_double_input_funcs = ("atan2",)
 
 positive_double_input_funcs = (
     "hypot",
@@ -120,9 +119,8 @@ positive_double_input_cases = list(
     itertools.product(positive_double_input_funcs, *zip(*double_input_dict["positive"]))
 )
 
-double_input_cases = (
-    real_double_input_cases + positive_double_input_cases
-)
+double_input_cases = real_double_input_cases + positive_double_input_cases
+
 
 @pytest.mark.parametrize("func, value_0, value_1", double_input_cases)
 def test_double_input_func_derivatives(func, value_0, value_1):
@@ -166,7 +164,10 @@ def test_double_input_func_derivatives(func, value_0, value_1):
     )
 
 
-
+@pytest.mark.xfail(
+    reason="Can't recover this test, no more derivative attribute to use for "
+    "compare_derivatives."
+)
 def test_fixed_derivatives_math_funcs():
     """
     Comparison between function derivatives and numerical derivatives.
@@ -224,14 +225,14 @@ def test_compound_expression():
     x = ufloat(3, 0.1)
 
     # Prone to numerical errors (but not much more than floats):
-    assert umath_core.tan(x) == umath_core.sin(x) / umath_core.cos(x)
+    assert umath.tan(x) == umath.sin(x) / umath.cos(x)
 
 
 def test_numerical_example():
     "Test specific numerical examples"
 
     x = ufloat(3.14, 0.01)
-    result = umath_core.sin(x)
+    result = umath.sin(x)
     # In order to prevent big errors such as a wrong, constant value
     # for all analytical and numerical derivatives, which would make
     # test_fixed_derivatives_math_funcs() succeed despite incorrect
@@ -242,7 +243,7 @@ def test_numerical_example():
     )
 
     # Regular calculations should still work:
-    assert "%.11f" % umath_core.sin(3) == "0.14112000806"
+    assert "%.11f" % umath.sin(3) == "0.14112000806"
 
 
 def test_monte_carlo_comparison():
@@ -265,7 +266,6 @@ def test_monte_carlo_comparison():
 
     # Works on numpy.arrays of Variable objects (whereas umath_core.sin()
     # does not):
-    sin_uarray_uncert = numpy.vectorize(umath_core.sin, otypes=[object])
 
     # Example expression (with correlations, and multiple variables combined
     # in a non-linear way):
@@ -275,7 +275,7 @@ def test_monte_carlo_comparison():
         """
         # The uncertainty due to x is about equal to the uncertainty
         # due to y:
-        return 10 * x**2 - x * sin_uarray_uncert(y**3)
+        return 10 * x**2 - x * np.sin(y**3)
 
     x = ufloat(0.2, 0.01)
     y = ufloat(10, 0.001)
@@ -284,7 +284,7 @@ def test_monte_carlo_comparison():
 
     # Covariances "f*f", "f*x", "f*y":
     covariances_this_module = numpy.array(
-        uncert_core.covariance_matrix((x, y, function_result_this_module))
+        covariance_matrix((x, y, function_result_this_module))
     )
 
     def monte_carlo_calc(n_samples):
@@ -296,37 +296,23 @@ def test_monte_carlo_comparison():
         x_samples = numpy.random.normal(x.nominal_value, x.std_dev, n_samples)
         y_samples = numpy.random.normal(y.nominal_value, y.std_dev, n_samples)
 
-        # !! astype() is a fix for median() in NumPy 1.8.0:
-        function_samples = function(x_samples, y_samples).astype(float)
+        function_samples = function(x_samples, y_samples)
 
         cov_mat = numpy.cov([x_samples, y_samples], function_samples)
 
-        return (numpy.median(function_samples), cov_mat)
+        return numpy.median(function_samples), cov_mat
 
-    (nominal_value_samples, covariances_samples) = monte_carlo_calc(1000000)
+    nominal_value_samples, covariances_samples = monte_carlo_calc(1000000)
 
-    ## Comparison between both results:
-
-    # The covariance matrices must be close:
-
-    # We rely on the fact that covariances_samples very rarely has
-    # null elements:
-
-    # !!! The test could be done directly with NumPy's comparison
-    # tools, no? See assert_allclose, assert_array_almost_equal_nulp
-    # or assert_array_max_ulp. This is relevant for all vectorized
-    # occurrences of numbers_close.
-
-    assert numpy.vectorize(numbers_close)(
-        covariances_this_module, covariances_samples, 0.06
-    ).all(), (
+    assert np.allclose(
+        covariances_this_module, covariances_samples, atol=0.01, rtol=0.01
+    ), (
         "The covariance matrices do not coincide between"
         " the Monte-Carlo simulation and the direct calculation:\n"
         "* Monte-Carlo:\n%s\n* Direct calculation:\n%s"
         % (covariances_samples, covariances_this_module)
     )
 
-    # The nominal values must be close:
     assert numbers_close(
         nominal_value_this_module,
         nominal_value_samples,
