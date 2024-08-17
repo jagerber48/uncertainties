@@ -86,6 +86,13 @@ def test_single_input_func_derivatives(func, value):
     )
 
 
+double_input_funcs = (
+    "atan2",
+    "hypot",
+    "log"
+)
+
+
 single_input_positive_list = (
     "log",
     "log10",
