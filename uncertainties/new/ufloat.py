@@ -27,25 +27,21 @@ class UFloat(NumericBase):
     __slots__ = ["_value", "_uncertainty", "tag"]
 
     def __init__(
-            self,
-            value: Real,
-            uncertainty: Union[UCombo, Real],
-            tag: Optional[str]=None,
+        self,
+        value: Real,
+        uncertainty: Union[UCombo, Real],
+        tag: Optional[str] = None,
     ):
         self._value: float = float(value)
 
         if isinstance(uncertainty, Real):
-            combo = UCombo(
-                (
-                    (UAtom(tag=tag), float(uncertainty)),
-                )
-            )
+            combo = UCombo(((UAtom(tag=tag), float(uncertainty)),))
             self._uncertainty: UCombo = combo
         else:
             self._uncertainty: UCombo = uncertainty
 
         self.tag = tag  # TODO: I do not think UFloat should have tag attribute.
-                        #   Maybe UAtom can, but I'm not sure why.
+        #   Maybe UAtom can, but I'm not sure why.
 
     @property
     def value(self: Self) -> float:
@@ -75,7 +71,7 @@ class UFloat(NumericBase):
     def __eq__(self: Self, other: Self) -> bool:
         if not isinstance(other, UFloat):
             return False
-        return self.n == other.n and self.u.expanded_dict == other.u.expanded_dict
+        return self.n == other.n and self.u == other.u
 
     def __format__(self: Self, format_spec: str = "") -> str:
         return format_ufloat(self, format_spec)

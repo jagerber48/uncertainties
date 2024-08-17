@@ -1,5 +1,5 @@
 import random
-from math import isnan, isinf
+from math import isnan
 
 import uncertainties.core as uncert_core
 from uncertainties.core import ufloat, AffineScalarFunc
@@ -177,18 +177,12 @@ def numbers_close(x, y, tolerance=1e-6):
 
     # Instead of using a try and ZeroDivisionError, we do a test,
     # NaN could appear silently:
-
-    if x != 0 and y != 0:
-        if isinf(x):
-            return isinf(y)
-        elif isnan(x):
-            return isnan(y)
-        else:
-            # Symmetric form of the test:
-            return 2 * abs(x - y) / (abs(x) + abs(y)) < tolerance
-
-    else:  # Either x or y is zero
-        return abs(x or y) < tolerance
+    if isnan(x):
+        return isnan(y)
+    elif isnan(y):
+        return isnan(x)
+    else:
+        return x - y < tolerance
 
 
 def ufloats_close(x, y, tolerance=1e-6):
@@ -200,11 +194,8 @@ def ufloats_close(x, y, tolerance=1e-6):
     The tolerance is applied to both the nominal value and the
     standard deviation of the difference between the numbers.
     """
-
     diff = x - y
-    return numbers_close(diff.nominal_value, 0, tolerance) and numbers_close(
-        diff.std_dev, 0, tolerance
-    )
+    return numbers_close(diff.n, 0) and numbers_close(diff.s, 0)
 
 
 class DerivativesDiffer(Exception):
@@ -360,34 +351,7 @@ except ImportError:
 else:
 
     def uarrays_close(m1, m2, precision=1e-4):
-        """
-        Returns True iff m1 and m2 are almost equal, where elements
-        can be either floats or AffineScalarFunc objects.
-
-        Two independent AffineScalarFunc objects are deemed equal if
-        both their nominal value and uncertainty are equal (up to the
-        given precision).
-
-        m1, m2 -- NumPy arrays.
-
-        precision -- precision passed through to
-        uncertainties.test_uncertainties.numbers_close().
-        """
-
-        # ! numpy.allclose() is similar to this function, but does not
-        # work on arrays that contain numbers with uncertainties, because
-        # of the isinf() function.
-
-        for elmt1, elmt2 in zip(m1.flat, m2.flat):
-            # For a simpler comparison, both elements are
-            # converted to AffineScalarFunc objects:
-            elmt1 = uncert_core.to_affine_scalar(elmt1)
-            elmt2 = uncert_core.to_affine_scalar(elmt2)
-
-            if not numbers_close(elmt1.nominal_value, elmt2.nominal_value, precision):
+        for v1, v2 in zip(m1, m2):
+            if not ufloats_close(v1, v2, tolerance=precision):
                 return False
-
-            if not numbers_close(elmt1.std_dev, elmt2.std_dev, precision):
-                return False
-
         return True

@@ -2,9 +2,8 @@ import copy
 import math
 import random  # noqa
 
+import numpy as np
 import pytest
-
-from uncertainties import core as uncert_core
 
 from uncertainties.new import (
     UFloat,
@@ -13,6 +12,8 @@ from uncertainties.new import (
     covariance_matrix,
     to_ufloat_func,
     to_ufloat_pos_func,
+    std_dev,
+    correlated_values,
 )
 from uncertainties.new.func_conversion import numerical_partial_derivative
 from uncertainties.new.ucombo import UCombo
@@ -611,7 +612,7 @@ def test_basic_access_to_data():
 
     # std_score returns nan for zero std_dev.
     z = ufloat(3.14, 0.0, "z var")
-    assert isnan(z.std_score(1))
+    assert math.isnan(z.std_score(1))
 
 
 def test_correlations():
@@ -1107,12 +1108,14 @@ def test_access_to_std_dev():
     y = 2 * x
 
     # std_dev for Variable and AffineScalarFunc objects:
-    assert uncert_core.std_dev(x) == x.std_dev
-    assert uncert_core.std_dev(y) == y.std_dev
+    assert std_dev(x) == x.std_dev
+    assert std_dev(y) == y.std_dev
 
     # std_dev for other objects:
-    assert uncert_core.std_dev([]) == 0
-    assert uncert_core.std_dev(None) == 0
+    with pytest.raises(TypeError):
+        std_dev([])
+    with pytest.raises(TypeError):
+        std_dev(None) == 0
 
 
 ###############################################################################
@@ -1251,13 +1254,13 @@ else:
         Test through the input of the (full) covariance matrix.
         """
 
-        u = uncert_core.ufloat(1, 0.1)
-        cov = uncert_core.covariance_matrix([u])
+        u = UFloat(1, 0.1)
+        cov = covariance_matrix([u])
         # "1" is used instead of u.nominal_value because
         # u.nominal_value might return a float.  The idea is to force
         # the new variable u2 to be defined through an integer nominal
         # value:
-        (u2,) = uncert_core.correlated_values([1], cov)
+        (u2,) = correlated_values([1], cov)
         expr = 2 * u2  # Calculations with u2 should be possible, like with u # noqa
 
         ####################
@@ -1268,28 +1271,29 @@ else:
         y = ufloat(2, 0.3)
         z = -3 * x + y
 
-        covs = uncert_core.covariance_matrix([x, y, z])
+        covs = covariance_matrix([x, y, z])
 
         # Test of the diagonal covariance elements:
-        assert uarrays_close(
+        assert np.allclose(
             numpy.array([v.std_dev**2 for v in (x, y, z)]), numpy.array(covs).diagonal()
         )
 
         # "Inversion" of the covariance matrix: creation of new
         # variables:
-        (x_new, y_new, z_new) = uncert_core.correlated_values(
+        (x_new, y_new, z_new) = correlated_values(
             [x.nominal_value, y.nominal_value, z.nominal_value],
             covs,
-            tags=["x", "y", "z"],
         )
 
         # Even the uncertainties should be correctly reconstructed:
-        assert uarrays_close(numpy.array((x, y, z)), numpy.array((x_new, y_new, z_new)))
+        for first, second in ((x, x_new), (y, y_new), (z, z_new)):
+            assert numbers_close(first.n, second.n)
+            assert numbers_close(first.s, second.s)
 
         # ... and the covariances too:
-        assert uarrays_close(
+        assert np.allclose(
             numpy.array(covs),
-            numpy.array(uncert_core.covariance_matrix([x_new, y_new, z_new])),
+            numpy.array(covariance_matrix([x_new, y_new, z_new])),
         )
 
         assert uarrays_close(numpy.array([z_new]), numpy.array([-3 * x_new + y_new]))
@@ -1303,25 +1307,26 @@ else:
         sum_value = u + 2 * v
 
         # Covariance matrices:
-        cov_matrix = uncert_core.covariance_matrix([u, v, sum_value])
+        cov_matrix = covariance_matrix([u, v, sum_value])
 
         # Correlated variables can be constructed from a covariance
         # matrix, if NumPy is available:
-        (u2, v2, sum2) = uncert_core.correlated_values(
+        (u2, v2, sum2) = correlated_values(
             [x.nominal_value for x in [u, v, sum_value]], cov_matrix
         )
 
         # uarrays_close() is used instead of numbers_close() because
         # it compares uncertainties too:
-        assert uarrays_close(numpy.array([u]), numpy.array([u2]))
-        assert uarrays_close(numpy.array([v]), numpy.array([v2]))
-        assert uarrays_close(numpy.array([sum_value]), numpy.array([sum2]))
-        assert uarrays_close(numpy.array([0]), numpy.array([sum2 - (u2 + 2 * v2)]))
+        for first, second in ((u, u2), (v, v2), (sum_value, sum2)):
+            assert numbers_close(first.n, second.n)
+            assert numbers_close(first.s, second.s)
+        assert ufloats_close(sum2 - (u2 + 2 * v2), ufloat(0, 0))
 
         # Spot checks of the correlation matrix:
-        corr_matrix = uncert_core.correlation_matrix([u, v, sum_value])
-        assert numbers_close(corr_matrix[0, 0], 1)
-        assert numbers_close(corr_matrix[1, 2], 2 * v.std_dev / sum_value.std_dev)
+        with pytest.raises(NameError):
+            corr_matrix = correlation_matrix([u, v, sum_value])
+            assert numbers_close(corr_matrix[0, 0], 1)
+            assert numbers_close(corr_matrix[1, 2], 2 * v.std_dev / sum_value.std_dev)
 
         ####################
 
@@ -1332,7 +1337,7 @@ else:
         cov[0, 1] = cov[1, 0] = 0.9e-70
         cov[[0, 1], 2] = -3e-34
         cov[2, [0, 1]] = -3e-34
-        variables = uncert_core.correlated_values([0] * 3, cov)
+        variables = correlated_values([0] * 3, cov)
 
         # Since the numbers are very small, we need to compare them
         # in a stricter way, that handles the case of a 0 variance
@@ -1352,13 +1357,13 @@ else:
 
         cov = numpy.diag([0, 0, 10])
         nom_values = [1, 2, 3]
-        variables = uncert_core.correlated_values(nom_values, cov)
+        variables = correlated_values(nom_values, cov)
 
         for variable, nom_value, variance in zip(variables, nom_values, cov.diagonal()):
             assert numbers_close(variable.n, nom_value)
             assert numbers_close(variable.s**2, variance)
 
-        assert uarrays_close(cov, numpy.array(uncert_core.covariance_matrix(variables)))
+        assert np.allclose(cov, numpy.array(covariance_matrix(variables)))
 
     def test_correlated_values_correlation_mat():
         """
