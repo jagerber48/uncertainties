@@ -141,20 +141,23 @@ class to_ufloat_func:
                     #   but the functions is actually called with a kwarg x then we will
                     #   miss the opportunity to use the analytic derivative. This needs
                     #   to be resolved.
-                    if (
-                        label in self.deriv_func_dict
-                        and self.deriv_func_dict[label] is not None
-                    ):
-                        deriv_func = self.deriv_func_dict[label]
-                        derivative = deriv_func(*float_args, **float_kwargs)
-                    else:
-                        derivative = numerical_partial_derivative(
-                            f,
-                            label,
-                            *float_args,
-                            **float_kwargs,
-                        )
-                        derivative = float(derivative)
+                    try:
+                        if (
+                            label in self.deriv_func_dict
+                            and self.deriv_func_dict[label] is not None
+                        ):
+                            deriv_func = self.deriv_func_dict[label]
+                            derivative = deriv_func(*float_args, **float_kwargs)
+                        else:
+                            derivative = numerical_partial_derivative(
+                                f,
+                                label,
+                                *float_args,
+                                **float_kwargs,
+                            )
+                            derivative = float(derivative)
+                    except ZeroDivisionError:
+                        derivative = float("nan")
                     new_ucombo += derivative * arg.uncertainty
 
             return UFloat(new_val, new_ucombo)
