@@ -530,7 +530,9 @@ class AffineScalarFunc(object):
                 message=r"(Variable|AffineScalarFunc)\.(error_components|derivatives)\(\).*deprecated",
                 category=FutureWarning,
             )
-            return float(sqrt(sum(delta**2 for delta in self.error_components().values())))
+            return float(
+                sqrt(sum(delta**2 for delta in self.error_components().values()))
+            )
 
     # Abbreviation (for formulas, etc.):
     s = std_dev
