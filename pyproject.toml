@@ -76,8 +76,4 @@ filterwarnings = [
     "error",
     "ignore:the matrix subclass is not the recommended way:PendingDeprecationWarning",
     "ignore:Using UFloat objects with std_dev==0 may give unexpected results\\.:UserWarning",
-    "ignore:AffineScalarFunc\\.error_components\\(\\).*This method is deprecated\\.:FutureWarning",
-    "ignore:AffineScalarFunc\\.derivatives\\(\\) is deprecated\\.:FutureWarning",
-    "ignore:Variable\\.error_components\\(\\).*This method is deprecated\\.:FutureWarning",
-    "ignore:Variable\\.derivatives\\(\\) is deprecated\\.:FutureWarning",
 ]
