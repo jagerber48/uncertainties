@@ -11,7 +11,7 @@ import uncertainties.core as uncert_core
 import uncertainties.umath_core as umath_core
 from uncertainties.ops import partial_derivative
 
-from helpers import nan_close, ufloat_nan_close
+from helpers import deprecated_ok, nan_close, ufloat_nan_close
 ###############################################################################
 # Unit tests
 
@@ -205,7 +205,8 @@ def test_math_module():
     # factorial() does not work on numbers with uncertainties
     # because it is restricted to integers, as for
     # math.factorial()):
-    assert umath_core.factorial(4) == 24
+    with deprecated_ok():
+        assert umath_core.factorial(4) == 24
 
     # fsum is special because it does not take a fixed number of
     # variables:
@@ -219,10 +220,11 @@ def test_math_module():
         except AttributeError:
             continue  # Not in the math module, so not in umath_core either
 
-        assert func(x) == func(x.nominal_value)
-        # The type should be left untouched. For example, isnan()
-        # should always give a boolean:
-        assert isinstance(func(x), type(func(x.nominal_value)))
+        with deprecated_ok():
+            assert func(x) == func(x.nominal_value)
+            # The type should be left untouched. For example, isnan()
+            # should always give a boolean:
+            assert isinstance(func(x), type(func(x.nominal_value)))
 
     # The same exceptions should be generated when numbers with uncertainties
     # are used:

@@ -22,6 +22,7 @@ from uncertainties import (
 )
 from uncertainties.ops import partial_derivative
 from helpers import (
+    deprecated_ok,
     nan_close,
     ufloat_nan_close,
 )
@@ -332,7 +333,8 @@ def test_int_div():
     "Integer division"
     # We perform all operations on floats, because derivatives can
     # otherwise be meaningless:
-    x = ufloat(3.9, 2) // 2
+    with deprecated_ok():
+        x = ufloat(3.9, 2) // 2
     assert x.nominal_value == 1.0
     # All errors are supposed to be small, so the ufloat()
     # in x violates the assumption.  Therefore, the following is
@@ -348,9 +350,11 @@ def test_comparison_ops():
     a = ufloat(-3, 0)
     b = ufloat(10, 0)
     c = ufloat(10, 0)
-    assert a < b
-    assert a < 3
-    assert 3 < b  # This is first given to int.__lt__()
+
+    with deprecated_ok():
+        assert a < b
+        assert a < 3
+        assert 3 < b  # This is first given to int.__lt__()
     assert b == c
 
     x = ufloat(3, 0.1)
@@ -361,11 +365,12 @@ def test_comparison_ops():
     # different intervals can still do "if 0 < x < 1:...".  This
     # supposes again that errors are "small" (as for the estimate of
     # the standard error).
-    assert x > 1
+    with deprecated_ok():
+        assert x > 1
 
-    # The limit case is not obvious:
-    assert not (x >= 3)
-    assert not (x < 3)
+        # The limit case is not obvious:
+        assert not (x >= 3)
+        assert not (x < 3)
 
     assert x == x
     # Comparaison between Variable and AffineScalarFunc:
@@ -459,18 +464,19 @@ def test_comparison_ops():
                 )
 
     # With different numbers:
-    test_all_comparison_ops(ufloat(3, 0.1), ufloat(-2, 0.1))
-    test_all_comparison_ops(
-        ufloat(0, 0),  # Special number
-        ufloat(1, 1),
-    )
-    test_all_comparison_ops(
-        ufloat(0, 0),  # Special number
-        ufloat(0, 0.1),
-    )
-    # With identical numbers:
-    test_all_comparison_ops(ufloat(0, 0), ufloat(0, 0))
-    test_all_comparison_ops(ufloat(1, 1), ufloat(1, 1))
+    with deprecated_ok():
+        test_all_comparison_ops(ufloat(3, 0.1), ufloat(-2, 0.1))
+        test_all_comparison_ops(
+            ufloat(0, 0),  # Special number
+            ufloat(1, 1),
+        )
+        test_all_comparison_ops(
+            ufloat(0, 0),  # Special number
+            ufloat(0, 0.1),
+        )
+        # With identical numbers:
+        test_all_comparison_ops(ufloat(0, 0), ufloat(0, 0))
+        test_all_comparison_ops(ufloat(1, 1), ufloat(1, 1))
 
 
 def test_logic():
@@ -481,10 +487,11 @@ def test_logic():
     z = ufloat(0, 0.1)
     t = ufloat(-1, 2)
 
-    assert bool(x)
-    assert not bool(y)
-    assert bool(z)
-    assert bool(t)  # Only infinitseimal neighborhood are used
+    with deprecated_ok():
+        assert bool(x)
+        assert not bool(y)
+        assert bool(z)
+        assert bool(t)  # Only infinitseimal neighborhood are used
 
 
 def test_basic_access_to_data():
@@ -1107,18 +1114,19 @@ else:
         assert numpy.all(x == numpy.array([x, x, x]))
 
         # Inequalities:
-        assert len(x < numpy.arange(10)) == 10
-        assert len(numpy.arange(10) > x) == 10
-        assert len(x <= numpy.arange(10)) == 10
-        assert len(numpy.arange(10) >= x) == 10
-        assert len(x > numpy.arange(10)) == 10
-        assert len(numpy.arange(10) < x) == 10
-        assert len(x >= numpy.arange(10)) == 10
-        assert len(numpy.arange(10) <= x) == 10
+        with deprecated_ok():
+            assert len(x < numpy.arange(10)) == 10
+            assert len(numpy.arange(10) > x) == 10
+            assert len(x <= numpy.arange(10)) == 10
+            assert len(numpy.arange(10) >= x) == 10
+            assert len(x > numpy.arange(10)) == 10
+            assert len(numpy.arange(10) < x) == 10
+            assert len(x >= numpy.arange(10)) == 10
+            assert len(numpy.arange(10) <= x) == 10
 
-        # More detailed test, that shows that the comparisons are
-        # meaningful (x >= 0, but not x <= 1):
-        assert numpy.all((x >= numpy.arange(3)) == [True, False, False])
+            # More detailed test, that shows that the comparisons are
+            # meaningful (x >= 0, but not x <= 1):
+            assert numpy.all((x >= numpy.arange(3)) == [True, False, False])
 
     def test_correlated_values():
         """
@@ -1163,8 +1171,9 @@ else:
 
         orig_uarr = np.array((x, y, z))
         new_uarr = np.array((x_new, y_new, z_new))
-        assert np.isclose(nominal_values(orig_uarr), nominal_values(new_uarr)).all()
-        assert np.isclose(std_devs(orig_uarr), std_devs(new_uarr)).all()
+        with deprecated_ok():
+            assert np.isclose(nominal_values(orig_uarr), nominal_values(new_uarr)).all()
+            assert np.isclose(std_devs(orig_uarr), std_devs(new_uarr)).all()
 
         # ... and the covariances too:
         assert np.isclose(
