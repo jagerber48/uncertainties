@@ -83,7 +83,7 @@ def test_matrix():
         m = unumpy.matrix([[ufloat(10, 1), -3.1], [0, ufloat(3, 0)]])
         m_nominal_values = unumpy.nominal_values(m)
 
-    # Test of the nominal_value attribute:
+        # Test of the nominal_value attribute:
         assert numpy.all(m_nominal_values == m.nominal_values)
 
     assert type(m[0, 0]) == uncert_core.Variable
