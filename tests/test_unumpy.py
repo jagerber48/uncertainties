@@ -101,12 +101,13 @@ def derivatives_close(x, y):
     """
 
     # x and y must depend on the same variables:
-    if set(x.derivatives) != set(y.derivatives):
-        return False  # Not the same variables
+    with deprecated_ok():
+        if set(x.derivatives) != set(y.derivatives):
+            return False  # Not the same variables
 
-    return all(
-        nan_close(x.derivatives[var], y.derivatives[var]) for var in x.derivatives
-    )
+        return all(
+            nan_close(x.derivatives[var], y.derivatives[var]) for var in x.derivatives
+        )
 
 
 def test_inverse():
@@ -170,10 +171,10 @@ def test_inverse():
 
     # There are correlations if both the next two derivatives are
     # not zero:
-    assert m_inverse[0, 0].derivatives[x]
-    assert m_inverse[0, 1].derivatives[x]
-
     with deprecated_ok():
+        assert m_inverse[0, 0].derivatives[x]
+        assert m_inverse[0, 1].derivatives[x]
+
         # Correlations between m and m_inverse should create a perfect
         # inversion:
         assert uarrays_close(m * m_inverse, numpy.eye(m.shape[0])).all()

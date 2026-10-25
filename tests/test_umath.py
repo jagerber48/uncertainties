@@ -44,7 +44,8 @@ def test_umath_function_derivatives(func_name, ufloat_tuples):
     result = func(*ufloat_arg_list)
 
     for arg_num, arg in enumerate(ufloat_arg_list):
-        ufloat_deriv_value = result.derivatives[arg]
+        with deprecated_ok():
+            ufloat_deriv_value = result.derivatives[arg]
         numerical_deriv_func = partial_derivative(func, arg_num)
         numerical_deriv_value = numerical_deriv_func(*float_arg_list)
         assert math.isclose(
@@ -122,9 +123,10 @@ def test_monte_carlo_comparison():
     nominal_value_this_module = function_result_this_module.nominal_value
 
     # Covariances "f*f", "f*x", "f*y":
-    covariances_this_module = numpy.array(
-        uncert_core.covariance_matrix((x, y, function_result_this_module))
-    )
+    with deprecated_ok():
+        covariances_this_module = numpy.array(
+            uncert_core.covariance_matrix((x, y, function_result_this_module))
+        )
 
     def monte_carlo_calc(n_samples):
         """
@@ -280,8 +282,9 @@ def test_hypot():
     # Derivatives that cannot be calculated simply return NaN, with no
     # exception being raised, normally:
     result = umath_core.hypot(x, y)
-    assert isnan(result.derivatives[x])
-    assert isnan(result.derivatives[y])
+    with deprecated_ok():
+        assert isnan(result.derivatives[x])
+        assert isnan(result.derivatives[y])
 
 
 @pytest.mark.parametrize("function_name", umath_core.deprecated_functions)
